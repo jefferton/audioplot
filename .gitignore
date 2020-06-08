@@ -1,0 +1,9 @@
+*.o
+*.mp3
+*.wav
+*.flac
+*.ogg
+imgui.ini
+audioplot
+audioplot.exe
+deps/
