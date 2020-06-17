@@ -19,22 +19,23 @@ Open a supported audio file in the audioplot gui:
 
 ## Keyboard Controls
 
-    Esc Key                         --> Exit audioplot
-    Arrow Keys                      --> Scroll Cursor Slow (Up/Down) or Fast (Left/Right)
-    W/A/S/D keys                    --> Pan (A/D) and Zoom (W/S)
-    Space Bar                       --> Reset Pan and Zoom
-    Tab Key                         --> Toggle Individual Channel Plots/Combined Plot
-    Number Keys (12345667890)       --> Toggle Exclusive View of Channel 1-10
-    Shift + Number Keys             --> Toggle Exclusive View of Channel 11-20
-    Ctrl + Number Keys              --> Show/Hide Channel 1-10
-    Ctrl + Shift + Number Keys      --> Show/Hide Channel 11-20
-    Backtick Key (`)                --> Show All Channels
+    Esc Key                          --> Exit audioplot
+    Arrow Keys                       --> Scroll Cursor Slow (Up/Down) or Fast (Left/Right)
+    W/A/S/D keys                     --> Pan (A/D) and Zoom (W/S)
+    Space Bar                        --> Reset Pan and Zoom
+    Tab Key                          --> Switch Plot Modes (Combined, Split, Multiple)
+    Number Keys (12345667890)        --> Toggle Exclusive View of Channel 1-10
+    Shift + Number Keys              --> Toggle Exclusive View of Channel 11-20
+    Ctrl + Number Keys               --> Show/Hide Channel 1-10
+    Ctrl + Shift + Number Keys       --> Show/Hide Channel 11-20
+    Backtick Key (`)                 --> Show All Channels
 
 ## Mouse Controls
 
-    Scroll Up/Down                  --> Zoom In/Out
-    Left Click-and-Drag Left/Right  --> Pan Left/Right
-    Right Click-and-Drag Left/Right --> Fit to Bounding Box
+    Scroll Up/Down                   --> Zoom In/Out
+    Middle Click-and-Drag Left/Right --> Move Cursor
+    Left Click-and-Drag Left/Right   --> Pan Left/Right
+    Right Click-and-Drag Left/Right  --> Fit to Bounding Box
 
 ## Building
 
@@ -61,7 +62,7 @@ original repository into the `thirdparty` subdirectory.
 The `get_deps.sh` script clones the appropriate third-party repositories, so they are
 available for development, for example, to incorporate upstream changes.
 
-## Third-Party Licenses
+### Third-Party Licenses
 
 - dr_libs/README.md                (public domain)
 - gl3w/GL/glcorearb.h              (MIT license)
