@@ -170,6 +170,11 @@ public:
         return &m_traces[trace].m_levels[level].m_points[0];
     }
 
+    const Point* getSpreadPointArray(int32_t trace, int32_t level) const
+    {
+        return &m_traces[trace].m_levels[level].m_spreadPoints[0];
+    }
+
     uint32_t numLevels() const
     {
         return (uint32_t)m_traces[0].m_levels.size();
@@ -179,6 +184,7 @@ private:
     struct TraceDetailLevel
     {
         std::vector<Point> m_points;
+        std::vector<Point> m_spreadPoints;
         uint64_t m_windowSize;
         double m_windowTime;
     };
@@ -405,6 +411,26 @@ private:
             // std::cout << "        Channel " << column << " processed\n";
         }
 
+        const int32_t numTraces = m_traces.size();
+        const double scale = (1.0 / (double)numTraces);
+        for (int32_t trace = 0; trace < numTraces; trace++) {
+
+            const double offset = (1.0 - ((trace + 0.5) * (2.0 / (double)numTraces)));
+            for (uint32_t level = 0; level < m_traces[trace].m_levels.size(); level++) {
+
+                const size_t numPoints = m_traces[trace].m_levels[level].m_points.size();
+                m_traces[trace].m_levels[level].m_spreadPoints.reserve(numPoints);
+
+                for (uint64_t point = 0; point < numPoints; point++) {
+
+                    Point p = m_traces[trace].m_levels[level].m_points[point];
+                    p.y *= scale;
+                    p.y += offset;
+                    m_traces[trace].m_levels[level].m_spreadPoints.push_back(p);
+                }
+            }
+        }
+
         // std::cout << "    Finished Processing.\n";
     }
 };
@@ -422,7 +448,7 @@ bool g_bPanRightPressed = false;
 bool g_bTraceShowAllPressed = false;
 bool g_bTraceTogglePressed[20] = {};  // Keys 0-9, with and without shift
 bool g_bTraceToggleExclusive = false;
-bool g_bCombinedPlotTogglePressed = false;
+bool g_bPlotModeSwitchPressed = false;
 
 class GuiRenderer
 {
@@ -448,7 +474,7 @@ public:
         m_frameCount = data.numValues();
         m_frameCurrent = m_frameCount / 2;
 
-        m_bCombinedPlotMode = (data.numTraces() > 8);
+        m_plotMode = (data.numTraces() > 8 ? PLOT_MODE_COMBINED : PLOT_MODE_SPREAD);
     }
 
     void shutdown()
@@ -470,13 +496,13 @@ public:
         processKeyboardCommands(data);
 
         drawColumnViewWindow(data);
-        if (m_bCombinedPlotMode) {
+        if (m_plotMode == PLOT_MODE_COMBINED || m_plotMode == PLOT_MODE_SPREAD) {
             drawCombinedPlotWindow(data);
         }
-        else {
+        else if (m_plotMode == PLOT_MODE_MULTIPLE) {
             drawMultiPlotWindow(data);
         }
-        m_bCombinedPlotModeChanged = false;
+        m_bPlotModeChanged = false;
 
         // ImGui::ShowMetricsWindow();
 
@@ -499,10 +525,10 @@ public:
     void processKeyboardCommands(AudioData& data)
     {
         // Handle Keyboard Combined/Multi Plot Toggle
-        if (g_bCombinedPlotTogglePressed) {
-            g_bCombinedPlotTogglePressed = false;
-            m_bCombinedPlotMode = !m_bCombinedPlotMode;
-            m_bCombinedPlotModeChanged = true;
+        if (g_bPlotModeSwitchPressed) {
+            g_bPlotModeSwitchPressed = false;
+            m_plotMode = (PlotMode)((m_plotMode + 1) % NUM_PLOT_MODES);
+            m_bPlotModeChanged = true;
         }
 
         // Handle Keyboard Trace Visibility Toggles
@@ -710,7 +736,7 @@ public:
                      ImGuiWindowFlags_NoScrollbar |
                      ImGuiWindowFlags_NoScrollWithMouse);
 
-        const bool bPlotLimitsChanged = (m_xAxisMin != m_xAxisMinNext) || (m_xAxisMax != m_xAxisMaxNext) || m_bCombinedPlotModeChanged;
+        const bool bPlotLimitsChanged = (m_xAxisMin != m_xAxisMinNext) || (m_xAxisMax != m_xAxisMaxNext) || m_bPlotModeChanged;
         m_xAxisMin = m_xAxisMinNext;
         m_xAxisMax = m_xAxisMaxNext;
 
@@ -723,7 +749,15 @@ public:
         ImPlot::SetNextPlotLimitsY(-1.0, 1.0, ImGuiCond_Always);
 
         ImVec2 plotWindowSize = ImGui::GetContentRegionAvail();
-        if (ImPlot::BeginPlot("", "Time (s)", NULL, plotWindowSize)) {
+
+        const bool bSpreadEnabled = (m_plotMode == PLOT_MODE_SPREAD) && !m_bExclusiveTraceMode;
+        const ImPlotFlags plotFlags = ImPlotFlags_Default;
+        const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_Default;
+        const ImPlotAxisFlags yAxisFlags = bSpreadEnabled ? (ImPlotAxisFlags_Default & ~ImPlotAxisFlags_TickLabels)
+                                                          : (ImPlotAxisFlags_Default);
+        const char* plotName = bSpreadEnabled ? "##SPREAD" : "##COMBINED";
+
+        if (ImPlot::BeginPlot(plotName, "Time (s)", NULL, plotWindowSize, plotFlags, xAxisFlags, yAxisFlags)) {
 
             const ImPlotLimits plotLimits = ImPlot::GetPlotLimits();
             if ((plotLimits.X.Min != m_xAxisMin) || (plotLimits.X.Max != m_xAxisMax)) {
@@ -742,7 +776,7 @@ public:
 
             const bool bShowMarkers = numPointsVisible < 250;
 
-            drawTraceLines(data, 0, data.numTraces(), bShowMarkers);
+            drawTraceLines(data, 0, data.numTraces(), bShowMarkers, bSpreadEnabled);
 
             updateCursorPosition(data);
 
@@ -773,7 +807,7 @@ public:
         const int32_t numVisibleTraces = data.numVisibleTraces();
         const ImVec2 childSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y / numVisibleTraces);
 
-        const bool bPlotLimitsChanged = (m_xAxisMin != m_xAxisMinNext) || (m_xAxisMax != m_xAxisMaxNext) || m_bCombinedPlotModeChanged;
+        const bool bPlotLimitsChanged = (m_xAxisMin != m_xAxisMinNext) || (m_xAxisMax != m_xAxisMaxNext) || m_bPlotModeChanged;
         m_xAxisMin = m_xAxisMinNext;
         m_xAxisMax = m_xAxisMaxNext;
 
@@ -817,8 +851,9 @@ public:
                     }
 
                     const bool bShowMarkers = numPointsVisible < 250;
+                    const bool bSpreadEnabled = false;
 
-                    drawTraceLines(data, trace, trace + 1, bShowMarkers);
+                    drawTraceLines(data, trace, trace + 1, bShowMarkers, bSpreadEnabled);
 
                     updateCursorPosition(data);
 
@@ -832,7 +867,7 @@ public:
         ImGui::End();
     }
 
-    void drawTraceLines(AudioData& data, int32_t traceStart, int32_t traceEnd, bool bShowMarkers)
+    void drawTraceLines(AudioData& data, int32_t traceStart, int32_t traceEnd, bool bShowMarkers, bool bSpread)
     {
         if (bShowMarkers) {
             ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_Circle);
@@ -841,7 +876,8 @@ public:
         for (int32_t trace = traceStart; trace < traceEnd; trace++) {
             if (data.isTraceVisible(trace)) {
                 ImPlot::PushStyleColor(ImPlotCol_Line, data.getTraceColor(trace));
-                const Point* pointArray = data.getPointArray(trace, m_levelCurrent);
+                const Point* pointArray = bSpread ? data.getSpreadPointArray(trace, m_levelCurrent)
+                                                  : data.getPointArray(trace, m_levelCurrent);
                 ImPlot::PlotLine(data.getTraceName(trace), &pointArray[m_plotStartIdx], m_plotEndIdx - m_plotStartIdx);
                 ImPlot::PopStyleColor(1);
             }
@@ -933,8 +969,16 @@ public:
     }
 
 private:
-    bool m_bCombinedPlotMode = false;
-    bool m_bCombinedPlotModeChanged = false;
+    enum PlotMode
+    {
+        PLOT_MODE_COMBINED,
+        PLOT_MODE_SPREAD,
+        PLOT_MODE_MULTIPLE,
+        NUM_PLOT_MODES,
+    };
+
+    PlotMode m_plotMode = PLOT_MODE_COMBINED;
+    bool m_bPlotModeChanged = false;
     bool m_bExclusiveTraceMode = false;
     uint64_t m_previousTracesVisibleBitmap = 0;
     double m_xAxisMin = 0;
@@ -1019,7 +1063,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
                 g_bTraceShowAllPressed = true;
                 break;
             case GLFW_KEY_TAB:
-                g_bCombinedPlotTogglePressed = true;
+                g_bPlotModeSwitchPressed = true;
                 break;
         }
     }
