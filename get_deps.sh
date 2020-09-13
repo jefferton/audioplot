@@ -31,7 +31,7 @@ popd > /dev/null
 ## Checkout specific git commits
 ##---------------------------------------------------------------------
 pushd deps/imgui > /dev/null
-git checkout 8baa4ccf
+git checkout 770c9953  # docking branch tip as of 9/13/2020
 popd > /dev/null
 
 pushd deps/implot > /dev/null
