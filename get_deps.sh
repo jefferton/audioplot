@@ -35,7 +35,7 @@ git checkout 770c9953  # docking branch tip as of 9/13/2020
 popd > /dev/null
 
 pushd deps/implot > /dev/null
-git checkout 165c3b8
+git checkout bb84461   # master branch tip as of 9/13/2020
 popd > /dev/null
 
 pushd deps/portable-file-dialogs > /dev/null
@@ -72,6 +72,8 @@ cp deps/imgui/examples/imgui_impl_glfw.cpp \
 
 mkdir -p thirdparty/implot
 cp deps/implot/implot.cpp \
+   deps/implot/implot_items.cpp \
+   deps/implot/implot_internal.h \
    deps/implot/implot.h \
    deps/implot/LICENSE \
    thirdparty/implot

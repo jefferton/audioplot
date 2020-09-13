@@ -458,6 +458,7 @@ public:
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
+        ImPlot::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable Docking
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;    // Enable Multi-Viewport / Platform Windows
@@ -481,6 +482,7 @@ public:
     {
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
+        ImPlot::DestroyContext();
         ImGui::DestroyContext();
     }
 
@@ -751,10 +753,10 @@ public:
         ImVec2 plotWindowSize = ImGui::GetContentRegionAvail();
 
         const bool bSpreadEnabled = (m_plotMode == PLOT_MODE_SPREAD) && !m_bExclusiveTraceMode;
-        const ImPlotFlags plotFlags = ImPlotFlags_Default;
-        const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_Default;
-        const ImPlotAxisFlags yAxisFlags = bSpreadEnabled ? (ImPlotAxisFlags_Default & ~ImPlotAxisFlags_TickLabels)
-                                                          : (ImPlotAxisFlags_Default);
+        const ImPlotFlags plotFlags = ImPlotFlags_None;
+        const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_None;
+        const ImPlotAxisFlags yAxisFlags = bSpreadEnabled ? (ImPlotAxisFlags_NoTickLabels)
+                                                          : (ImPlotAxisFlags_None);
         const char* plotName = bSpreadEnabled ? "##SPREAD" : "##COMBINED";
 
         if (ImPlot::BeginPlot(plotName, "Time (s)", NULL, plotWindowSize, plotFlags, xAxisFlags, yAxisFlags)) {
@@ -878,7 +880,10 @@ public:
                 ImPlot::PushStyleColor(ImPlotCol_Line, data.getTraceColor(trace));
                 const Point* pointArray = bSpread ? data.getSpreadPointArray(trace, m_levelCurrent)
                                                   : data.getPointArray(trace, m_levelCurrent);
-                ImPlot::PlotLine(data.getTraceName(trace), &pointArray[m_plotStartIdx], m_plotEndIdx - m_plotStartIdx);
+                const int count = m_plotEndIdx - m_plotStartIdx;
+                const int offset = 0;
+                const int stride = sizeof(Point);
+                ImPlot::PlotLine(data.getTraceName(trace), &pointArray[m_plotStartIdx].x, &pointArray[m_plotStartIdx].y, count, offset, stride);
                 ImPlot::PopStyleColor(1);
             }
         }

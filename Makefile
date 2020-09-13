@@ -41,6 +41,7 @@ INCLUDES += -Ithirdparty/gl3w/
 ## ImPlot - https://github.com/epezent/implot.git
 ##---------------------------------------------------------------------
 SOURCES += thirdparty/implot/implot.cpp
+SOURCES += thirdparty/implot/implot_items.cpp
 INCLUDES += -Ithirdparty/implot/
 
 ##---------------------------------------------------------------------
