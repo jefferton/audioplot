@@ -440,8 +440,10 @@ bool g_bCursorDecrLarge = false;
 bool g_bCursorIncrLarge = false;
 bool g_bCursorIncrSmall = false;
 bool g_bCursorDecrSmall = false;
-bool g_bZoomInPressed = false;
-bool g_bZoomOutPressed = false;
+bool g_bXZoomInPressed = false;
+bool g_bXZoomOutPressed = false;
+bool g_bYZoomInPressed = false;
+bool g_bYZoomOutPressed = false;
 bool g_bResetZoomPressed = false;
 bool g_bPanLeftPressed = false;
 bool g_bPanRightPressed = false;
@@ -574,18 +576,32 @@ public:
             g_bResetZoomPressed = false;
             m_xAxisMinNext = 0;
             m_xAxisMaxNext = data.getMaxTime();
+            m_yAxisMinNext = -1.0;
+            m_yAxisMaxNext = 1.0;
         }
-        else if (g_bZoomInPressed) {
-            g_bZoomInPressed = false;
+        else if (g_bXZoomInPressed) {
+            g_bXZoomInPressed = false;
             const double zoom = 0.2 * (m_xAxisMax - m_xAxisMin);
             m_xAxisMinNext += zoom;
             m_xAxisMaxNext -= zoom;
         }
-        else if (g_bZoomOutPressed) {
-            g_bZoomOutPressed = false;
+        else if (g_bXZoomOutPressed) {
+            g_bXZoomOutPressed = false;
             const double zoom = 0.2 * (m_xAxisMax - m_xAxisMin);
             m_xAxisMinNext -= zoom;
             m_xAxisMaxNext += zoom;
+        }
+        else if (g_bYZoomInPressed) {
+            g_bYZoomInPressed = false;
+            const double zoom = 0.2 * (m_yAxisMax - m_yAxisMin);
+            m_yAxisMaxNext -= zoom;
+            m_yAxisMinNext = -1.0 * m_yAxisMaxNext;
+        }
+        else if (g_bYZoomOutPressed) {
+            g_bYZoomOutPressed = false;
+            const double zoom = 0.2 * (m_yAxisMax - m_yAxisMin);
+            m_yAxisMaxNext += zoom;
+            m_yAxisMinNext = -1.0 * m_yAxisMaxNext;
         }
         else if (g_bPanRightPressed) {
             g_bPanRightPressed = false;
@@ -738,34 +754,36 @@ public:
                      ImGuiWindowFlags_NoScrollbar |
                      ImGuiWindowFlags_NoScrollWithMouse);
 
-        const bool bPlotLimitsChanged = (m_xAxisMin != m_xAxisMinNext) || (m_xAxisMax != m_xAxisMaxNext) || m_bPlotModeChanged;
-        m_xAxisMin = m_xAxisMinNext;
-        m_xAxisMax = m_xAxisMaxNext;
+        const bool bSpreadEnabled = (m_plotMode == PLOT_MODE_SPREAD) && !m_bExclusiveTraceMode;
+
+        const bool bPlotLimitsChanged = processPlotLimitsChanges();
 
         if (bPlotLimitsChanged) {
             ImPlot::SetNextPlotLimitsX(m_xAxisMin, m_xAxisMax, ImGuiCond_Always);
+            if (bSpreadEnabled) {
+                ImPlot::SetNextPlotLimitsY(-1.0, 1.0, ImGuiCond_Always);
+            }
+            else {
+                ImPlot::SetNextPlotLimitsY(m_yAxisMin, m_yAxisMax, ImGuiCond_Always);
+            }
         }
         else {
             ImPlot::SetNextPlotLimitsX(0.0, data.getMaxTime(), ImGuiCond_Once);
+            ImPlot::SetNextPlotLimitsY(-1.0, 1.0, ImGuiCond_Once);
         }
-        ImPlot::SetNextPlotLimitsY(-1.0, 1.0, ImGuiCond_Always);
 
         ImVec2 plotWindowSize = ImGui::GetContentRegionAvail();
 
-        const bool bSpreadEnabled = (m_plotMode == PLOT_MODE_SPREAD) && !m_bExclusiveTraceMode;
-        const ImPlotFlags plotFlags = ImPlotFlags_None;
+        const ImPlotFlags plotFlags = ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect;
         const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_None;
-        const ImPlotAxisFlags yAxisFlags = bSpreadEnabled ? (ImPlotAxisFlags_NoTickLabels)
-                                                          : (ImPlotAxisFlags_None);
+        const ImPlotAxisFlags yAxisFlags = bSpreadEnabled ? (ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoTickLabels)
+                                                          : (ImPlotAxisFlags_Lock);
         const char* plotName = bSpreadEnabled ? "##SPREAD" : "##COMBINED";
 
         if (ImPlot::BeginPlot(plotName, "Time (s)", NULL, plotWindowSize, plotFlags, xAxisFlags, yAxisFlags)) {
 
             const ImPlotLimits plotLimits = ImPlot::GetPlotLimits();
-            if ((plotLimits.X.Min != m_xAxisMin) || (plotLimits.X.Max != m_xAxisMax)) {
-                m_xAxisMinNext = plotLimits.X.Min;
-                m_xAxisMaxNext = plotLimits.X.Max;
-            }
+            detectPlotLimitsChangesFromMouse(plotLimits);
 
             const double timeRange = plotLimits.X.Size();
 
@@ -809,9 +827,7 @@ public:
         const int32_t numVisibleTraces = data.numVisibleTraces();
         const ImVec2 childSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y / numVisibleTraces);
 
-        const bool bPlotLimitsChanged = (m_xAxisMin != m_xAxisMinNext) || (m_xAxisMax != m_xAxisMaxNext) || m_bPlotModeChanged;
-        m_xAxisMin = m_xAxisMinNext;
-        m_xAxisMax = m_xAxisMaxNext;
+        const bool bPlotLimitsChanged = processPlotLimitsChanges();
 
         int32_t traceCount = 0;
         for (int32_t trace = 0; trace < data.numTraces(); trace++) {
@@ -826,22 +842,26 @@ public:
 
                 if (bPlotLimitsChanged) {
                     ImPlot::SetNextPlotLimitsX(m_xAxisMin, m_xAxisMax, ImGuiCond_Always);
+                    ImPlot::SetNextPlotLimitsY(m_yAxisMin, m_yAxisMax, ImGuiCond_Always);
                 }
                 else {
                     ImPlot::SetNextPlotLimitsX(0.0, data.getMaxTime(), ImGuiCond_Once);
+                    ImPlot::SetNextPlotLimitsY(-1.0, 1.0, ImGuiCond_Once);
                 }
-                ImPlot::SetNextPlotLimitsY(-1.0, 1.0, ImGuiCond_Always);
+
+                const double yticks[] = {m_yAxisMin, 0.0, m_yAxisMax};
+                ImPlot::SetNextPlotTicksY(yticks, ARRSIZE(yticks));
 
                 char plotName[32];
                 snprintf(plotName, sizeof(plotName), "##Plot%" PRIi32, trace);
                 const char* xAxisLabel = (traceCount == numVisibleTraces ? "Time (s)" : NULL);
-                if (ImPlot::BeginPlot(plotName, xAxisLabel, NULL, childSize)) {
+                const ImPlotFlags plotFlags = ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect;
+                const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_None;
+                const ImPlotAxisFlags yAxisFlags = ImPlotAxisFlags_Lock;
+                if (ImPlot::BeginPlot(plotName, xAxisLabel, NULL, childSize, plotFlags, xAxisFlags, yAxisFlags)) {
 
                     const ImPlotLimits plotLimits = ImPlot::GetPlotLimits();
-                    if ((plotLimits.X.Min != m_xAxisMin) || (plotLimits.X.Max != m_xAxisMax)) {
-                        m_xAxisMinNext = plotLimits.X.Min;
-                        m_xAxisMaxNext = plotLimits.X.Max;
-                    }
+                    detectPlotLimitsChangesFromMouse(plotLimits);
 
                     const double timeRange = plotLimits.X.Size();
 
@@ -966,11 +986,36 @@ public:
     void drawCursorLine(AudioData& data)
     {
         const double timeCurrent = data.getTime(m_frameCurrent);
-        ImVec2 rmin = ImPlot::PlotToPixels(ImPlotPoint(timeCurrent, -1.0));
-        ImVec2 rmax = ImPlot::PlotToPixels(ImPlotPoint(timeCurrent,  1.0));
+        ImVec2 rmin = ImPlot::PlotToPixels(ImPlotPoint(timeCurrent, m_yAxisMin));
+        ImVec2 rmax = ImPlot::PlotToPixels(ImPlotPoint(timeCurrent, m_yAxisMax));
         ImPlot::PushPlotClipRect();
         ImGui::GetWindowDrawList()->AddLine(rmin, rmax, ImColor(255, 255, 255));
         ImPlot::PopPlotClipRect();
+    }
+
+    bool processPlotLimitsChanges()
+    {
+        const bool bPlotLimitsChanged = (m_xAxisMin != m_xAxisMinNext) || (m_xAxisMax != m_xAxisMaxNext) ||
+                                        (m_yAxisMin != m_yAxisMinNext) || (m_yAxisMax != m_yAxisMaxNext) ||
+                                        m_bPlotModeChanged;
+        m_xAxisMin = m_xAxisMinNext;
+        m_xAxisMax = m_xAxisMaxNext;
+        m_yAxisMax = MAX(abs(m_yAxisMaxNext), abs(m_yAxisMinNext));
+        m_yAxisMin = -1.0 * m_yAxisMax;
+
+        return bPlotLimitsChanged;
+    }
+
+    void detectPlotLimitsChangesFromMouse(const ImPlotLimits& plotLimits)
+    {
+        if ((plotLimits.X.Min != m_xAxisMin) || (plotLimits.X.Max != m_xAxisMax)) {
+            m_xAxisMinNext = plotLimits.X.Min;
+            m_xAxisMaxNext = plotLimits.X.Max;
+        }
+        if ((plotLimits.Y.Min != m_yAxisMin) || (plotLimits.Y.Max != m_yAxisMax)) {
+            m_yAxisMinNext = plotLimits.Y.Min;
+            m_yAxisMaxNext = plotLimits.Y.Max;
+        }
     }
 
 private:
@@ -990,6 +1035,10 @@ private:
     double m_xAxisMax = 0;
     double m_xAxisMinNext = 0;
     double m_xAxisMaxNext = 0;
+    double m_yAxisMin = 0;
+    double m_yAxisMax = 0;
+    double m_yAxisMinNext = 0;
+    double m_yAxisMaxNext = 0;
     uint64_t m_plotStartIdx = 0;
     uint64_t m_plotEndIdx = 0;
     uint32_t m_levelCurrent = 0;
@@ -1036,16 +1085,22 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
                 g_bResetZoomPressed = true;
                 break;
             case GLFW_KEY_W:
-                g_bZoomInPressed = true;
+                g_bXZoomInPressed = true;
                 break;
             case GLFW_KEY_A:
                 g_bPanLeftPressed = true;
                 break;
             case GLFW_KEY_S:
-                g_bZoomOutPressed = true;
+                g_bXZoomOutPressed = true;
                 break;
             case GLFW_KEY_D:
                 g_bPanRightPressed = true;
+                break;
+            case GLFW_KEY_Q:
+                g_bYZoomOutPressed = true;
+                break;
+            case GLFW_KEY_E:
+                g_bYZoomInPressed = true;
                 break;
             case GLFW_KEY_1:
             case GLFW_KEY_2:

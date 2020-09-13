@@ -21,7 +21,8 @@ Open a supported audio file in the audioplot gui:
 
     Esc Key                          --> Exit audioplot
     Arrow Keys                       --> Scroll Cursor Slow (Up/Down) or Fast (Left/Right)
-    W/A/S/D keys                     --> Pan (A/D) and Zoom (W/S)
+    W/A/S/D keys                     --> Horizontal Pan (A/D) and Zoom (W/S)
+    Q/E keys                         --> Vertical Zoom (Q/E)
     Space Bar                        --> Reset Pan and Zoom
     Tab Key                          --> Switch Plot Modes (Combined, Split, Multiple)
     Number Keys (12345667890)        --> Toggle Exclusive View of Channel 1-10
@@ -35,7 +36,6 @@ Open a supported audio file in the audioplot gui:
     Scroll Up/Down                   --> Zoom In/Out
     Middle Click-and-Drag Left/Right --> Move Cursor
     Left Click-and-Drag Left/Right   --> Pan Left/Right
-    Right Click-and-Drag Left/Right  --> Fit to Bounding Box
 
 ## Building
 
