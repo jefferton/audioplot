@@ -30,8 +30,6 @@ const int kWindowHeight = 1200;
 const uint32_t kMaxDetailLevels = 16;
 const uint64_t kMinDetailLevelPoints = 32768;
 
-const int32_t kMaxChannels = 16;
-
 typedef ImPlotPoint Point;
 typedef ImVec4 Color;
 
@@ -43,26 +41,26 @@ public:
         loadFromFile(filename);
     }
 
-    int32_t numColumns() const
+    int32_t getNumChannels() const
     {
-        return m_columnData.size();
+        return m_channelData.size();
     }
 
-    uint64_t numValues() const
+    uint64_t getNumValues() const
     {
-        if (m_columnData.size() > 0) {
-            return m_columnData[0].size();
+        if (m_channelData.size() > 0) {
+            return m_channelData[0].size();
         }
         else {
             return 0;
         }
     }
 
-    double getValue(int32_t column, uint64_t index) const
+    double getValue(int32_t channel, uint64_t index) const
     {
-        bool bValidColumn = (0 <= column && column < (int32_t)m_columnData.size());
-        if (bValidColumn && index < m_columnData[column].size()) {
-            return m_columnData[column][index];
+        bool bValidChannel = (0 <= channel && channel < (int32_t)m_channelData.size());
+        if (bValidChannel && index < m_channelData[channel].size()) {
+            return m_channelData[channel][index];
         }
         return 0;
     }
@@ -89,8 +87,8 @@ public:
 
     const char* getTraceName(int32_t trace) const
     {
-        if (0 <= trace && trace < (int32_t)m_columnNames.size()) {
-            return m_columnNames[trace].c_str();
+        if (0 <= trace && trace < (int32_t)m_channelNames.size()) {
+            return m_channelNames[trace].c_str();
         }
         else {
             return "";
@@ -122,7 +120,7 @@ public:
         m_bTraceVisibleBitmap = (m_bTraceVisibleBitmap ^ (1 << trace));
     }
 
-    int32_t numVisibleTraces() const
+    int32_t getNumVisibleTraces() const
     {
         int32_t numTraces = 0;
         for (int32_t i = 0; i < (int32_t)m_traces.size(); i++) {
@@ -138,11 +136,11 @@ public:
         return m_traces[trace].m_color;
     }
 
-    uint64_t numPointsInRange(double range, int32_t level) const
+    uint64_t getNumPointsInRange(double range, int32_t level) const
     {
         if (m_traces.size() > 0) {
             double unscaledPointsForRange = getIndexForTime(range);
-            unscaledPointsForRange = MIN(numPoints(0), unscaledPointsForRange);
+            unscaledPointsForRange = MIN(getNumPoints(0), unscaledPointsForRange);
             if (level == 0) {
                 return unscaledPointsForRange;
             }
@@ -155,7 +153,7 @@ public:
         }
     }
 
-    uint64_t numPoints(int32_t level) const
+    uint64_t getNumPoints(int32_t level) const
     {
         if (m_traces.size() > 0) {
             return m_traces[0].m_levels[level].m_points.size();
@@ -175,7 +173,7 @@ public:
         return &m_traces[trace].m_levels[level].m_spreadPoints[0];
     }
 
-    uint32_t numLevels() const
+    uint32_t getNumLevels() const
     {
         return (uint32_t)m_traces[0].m_levels.size();
     }
@@ -197,8 +195,8 @@ private:
 
     uint64_t m_bTraceVisibleBitmap = 0;
 
-    std::vector<std::string> m_columnNames;
-    std::vector<std::vector<double>> m_columnData;
+    std::vector<std::string> m_channelNames;
+    std::vector<std::vector<double>> m_channelData;
     std::vector<Trace> m_traces;
 
     double m_samplePeriod = 0.0;
@@ -272,12 +270,12 @@ private:
 
     void processF32Samples(float* pSampleData, uint32_t channelCount, uint32_t sampleRate, uint64_t frameCount)
     {
-        m_columnNames.reserve(channelCount);
-        m_columnData.reserve(channelCount);
+        m_channelNames.reserve(channelCount);
+        m_channelData.reserve(channelCount);
 
         for (size_t channel = 0; channel < channelCount; channel++) {
             std::string columnName = "Channel " + std::to_string(channel + 1);
-            m_columnNames.push_back(columnName);
+            m_channelNames.push_back(columnName);
 
             std::vector<double> samples;
             samples.reserve(frameCount);
@@ -287,7 +285,7 @@ private:
                 samples.push_back((double)value);
             }
 
-            m_columnData.push_back(std::move(samples));
+            m_channelData.push_back(std::move(samples));
         }
 
         if (sampleRate > 0) {
@@ -327,23 +325,23 @@ private:
         return colors[trace % ARRSIZE(colors)];
     }
 
-    TraceDetailLevel createDetailLevel(uint64_t windowSize, int32_t column, uint64_t numTimeSeriesValues) const
+    TraceDetailLevel createDetailLevel(uint64_t windowSize, int32_t channel, uint64_t numValues) const
     {
         TraceDetailLevel level;
         level.m_windowSize = windowSize;
         level.m_windowTime = getTime(windowSize);
 
         // Resample using the min and max point in each window
-        level.m_points.reserve(numTimeSeriesValues);
-        for (uint64_t indexStart = 0; indexStart < (numTimeSeriesValues + windowSize); indexStart += windowSize) {
+        level.m_points.reserve(numValues);
+        for (uint64_t indexStart = 0; indexStart < (numValues + windowSize); indexStart += windowSize) {
 
             double xMin = 0.0;
             double xMax = 0.0;
             double yMin = DBL_MAX;
             double yMax = -DBL_MAX;
-            const uint64_t indexEnd = MIN(indexStart + windowSize, numTimeSeriesValues);
+            const uint64_t indexEnd = MIN(indexStart + windowSize, numValues);
             for (uint64_t index = indexStart; index < indexEnd; index++) {
-                const double y = getValue(column, index); // -1 to +1
+                const double y = getValue(channel, index); // -1 to +1
                 if (y < yMin) {
                     xMin = getTime(index);
                     yMin = y;
@@ -371,13 +369,13 @@ private:
     {
         // std::cout << "    Processing Channel Data...\n";
 
-        const int32_t numTimeSeriesColumns = numColumns();
-        const uint64_t numTimeSeriesValues = numValues();
+        const int32_t numChannels = getNumChannels();
+        const uint64_t numValues = getNumValues();
 
         setAllTracesVisible(true);
 
-        m_traces.reserve(numTimeSeriesColumns);
-        for (int32_t column = 0; column < numTimeSeriesColumns; column++) {
+        m_traces.reserve(numChannels);
+        for (int32_t column = 0; column < numChannels; column++) {
 
             Trace trace;
             trace.m_color = getDefaultColor(column);
@@ -387,8 +385,8 @@ private:
                 TraceDetailLevel level;
                 level.m_windowSize = 1;
                 level.m_windowTime = getMaxTime();
-                level.m_points.reserve(numTimeSeriesValues);
-                for (uint64_t index = 0; index < numTimeSeriesValues; index++) {
+                level.m_points.reserve(numValues);
+                for (uint64_t index = 0; index < numValues; index++) {
                     double x = getTime(index);
                     double y = getValue(column, index); // -1 to +1
                     level.m_points.push_back(Point({x, y}));
@@ -402,7 +400,7 @@ private:
                 if (trace.m_levels[i].m_points.size() < kMinDetailLevelPoints) {
                     break;
                 }
-                TraceDetailLevel level = createDetailLevel(windowSize, column, numTimeSeriesValues);
+                TraceDetailLevel level = createDetailLevel(windowSize, column, numValues);
                 trace.m_levels.push_back(std::move(level));
                 windowSize *= 2;
             }
@@ -474,7 +472,7 @@ public:
         // Setup Style
         ImGui::StyleColorsDark();
 
-        m_frameCount = data.numValues();
+        m_frameCount = data.getNumValues();
         m_frameCurrent = m_frameCount / 2;
 
         m_plotMode = (data.numTraces() > 8 ? PLOT_MODE_COMBINED : PLOT_MODE_SPREAD);
@@ -680,7 +678,7 @@ public:
         ImGui::SliderScalar("", ImGuiDataType_U64, &m_frameCurrent, &min, &max, lbl);
         ImGui::PopItemWidth();
 
-        ImGui::Columns(data.numColumns() + 2);
+        ImGui::Columns(data.getNumChannels() + 2);
 
         uint64_t contextFrames = 3;
         uint64_t framesToDisplay = (2 * contextFrames) + 1;
@@ -787,7 +785,7 @@ public:
 
             const double timeRange = plotLimits.X.Size();
 
-            uint64_t numPointsVisible = data.numPointsInRange(timeRange, m_levelCurrent);
+            uint64_t numPointsVisible = data.getNumPointsInRange(timeRange, m_levelCurrent);
 
             if (bPlotLimitsChanged) {
                 numPointsVisible = adjustPlotDetailLevel(data, timeRange, numPointsVisible);
@@ -824,7 +822,7 @@ public:
                      ImGuiWindowFlags_NoScrollbar |
                      ImGuiWindowFlags_NoScrollWithMouse);
 
-        const int32_t numVisibleTraces = data.numVisibleTraces();
+        const int32_t numVisibleTraces = data.getNumVisibleTraces();
         const ImVec2 childSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y / numVisibleTraces);
 
         const bool bPlotLimitsChanged = processPlotLimitsChanges();
@@ -865,7 +863,7 @@ public:
 
                     const double timeRange = plotLimits.X.Size();
 
-                    uint64_t numPointsVisible = data.numPointsInRange(timeRange, m_levelCurrent);
+                    uint64_t numPointsVisible = data.getNumPointsInRange(timeRange, m_levelCurrent);
 
                     if (bPlotLimitsChanged && (traceCount == 1)) {
                         numPointsVisible = adjustPlotDetailLevel(data, timeRange, numPointsVisible);
@@ -916,8 +914,8 @@ public:
     uint64_t adjustPlotDetailLevel(AudioData& data, double timeRange, uint64_t numPointsVisible)
     {
         // Try to decrease detail level (make fewer points visible)
-        while (m_levelCurrent + 1 < data.numLevels()) {
-            uint32_t numPointsVisibleNextLevel = data.numPointsInRange(timeRange, m_levelCurrent + 1);
+        while (m_levelCurrent + 1 < data.getNumLevels()) {
+            uint32_t numPointsVisibleNextLevel = data.getNumPointsInRange(timeRange, m_levelCurrent + 1);
             if (numPointsVisibleNextLevel > (kMinDetailLevelPoints / 2)) {
                 m_levelCurrent = (m_levelCurrent + 1);
                 numPointsVisible = numPointsVisibleNextLevel;
@@ -929,7 +927,7 @@ public:
 
         // Try to increase detail level (make more points visible)
         while (m_levelCurrent > 0) {
-            uint32_t numPointsVisiblePrevLevel = data.numPointsInRange(timeRange, m_levelCurrent - 1);
+            uint32_t numPointsVisiblePrevLevel = data.getNumPointsInRange(timeRange, m_levelCurrent - 1);
             if (numPointsVisiblePrevLevel < (kMinDetailLevelPoints / 2)) {
                 m_levelCurrent = (m_levelCurrent - 1);
                 numPointsVisible = numPointsVisiblePrevLevel;
@@ -946,7 +944,7 @@ public:
     {
         // Cull points to avoid segfault when there are > 2^32 points
         const Point* pointArray = data.getPointArray(0, m_levelCurrent);
-        const uint64_t numPoints = data.numPoints(m_levelCurrent);
+        const uint64_t numPoints = data.getNumPoints(m_levelCurrent);
         const Point* pArrayStart = &pointArray[0];
         const Point* pArrayEnd = &pointArray[numPoints];
 
@@ -1166,7 +1164,7 @@ int main(int argc, const char** argv)
     // Load the data to plotted
     AudioData audioData(filename.c_str());
 
-    if (audioData.numValues() == 0) {
+    if (audioData.getNumValues() == 0) {
         std::cerr << "Unable to load file: " << filename << "\n";
         return -1;
     }
