@@ -30,6 +30,8 @@ const int kWindowHeight = 1200;
 const uint32_t kMaxDetailLevels = 16;
 const uint64_t kMinDetailLevelPoints = 32768;
 
+const ImPlotColormap kDefaultColorMap = ImPlotColormap_Dark;
+
 typedef ImPlotPoint Point;
 typedef ImVec4 Color;
 
@@ -133,7 +135,7 @@ public:
 
     Color getTraceColor(int32_t trace) const
     {
-        return m_traces[trace].m_color;
+        return ImPlot::GetColormapColor(trace);
     }
 
     uint64_t getNumPointsInRange(double range, int32_t level) const
@@ -190,7 +192,6 @@ private:
     struct Trace
     {
         std::vector<TraceDetailLevel> m_levels;
-        Color m_color;
     };
 
     uint64_t m_bTraceVisibleBitmap = 0;
@@ -300,31 +301,6 @@ private:
         initializeTraceData();
     }
 
-    static Color getDefaultColor(int32_t trace)
-    {
-        static const Color colors[] = {
-            // https://colorbrewer2.org/#type=qualitative&scheme=Set1&n=8
-            { (228.0 / 255.0), ( 26.0 / 255.0), ( 28.0 / 255.0), 1.0 },  // red
-            { ( 55.0 / 255.0), (126.0 / 255.0), (184.0 / 255.0), 1.0 },  // blue
-            { ( 77.0 / 255.0), (175.0 / 255.0), ( 74.0 / 255.0), 1.0 },  // green
-            { (152.0 / 255.0), ( 78.0 / 255.0), (163.0 / 255.0), 1.0 },  // purple
-            { (255.0 / 255.0), (127.0 / 255.0), (  0.0 / 255.0), 1.0 },  // orange
-            { (153.0 / 255.0), (153.0 / 255.0), (153.0 / 255.0), 1.0 },  // gray
-            { (166.0 / 255.0), ( 86.0 / 255.0), ( 40.0 / 255.0), 1.0 },  // brown
-            { (247.0 / 255.0), (129.0 / 255.0), (191.0 / 255.0), 1.0 },  // pink
-            // https://colorbrewer2.org/#type=qualitative&scheme=Pastel1&n=8
-            { (251.0 / 255.0), (180.0 / 255.0), (174.0 / 255.0), 1.0 },
-            { (179.0 / 255.0), (205.0 / 255.0), (227.0 / 255.0), 1.0 },
-            { (204.0 / 255.0), (235.0 / 255.0), (197.0 / 255.0), 1.0 },
-            { (222.0 / 255.0), (203.0 / 255.0), (228.0 / 255.0), 1.0 },
-            { (254.0 / 255.0), (217.0 / 255.0), (166.0 / 255.0), 1.0 },
-            { (255.0 / 255.0), (255.0 / 255.0), (204.0 / 255.0), 1.0 },
-            { (229.0 / 255.0), (216.0 / 255.0), (189.0 / 255.0), 1.0 },
-            { (253.0 / 255.0), (218.0 / 255.0), (236.0 / 255.0), 1.0 },
-        };
-        return colors[trace % ARRSIZE(colors)];
-    }
-
     TraceDetailLevel createDetailLevel(uint64_t windowSize, int32_t channel, uint64_t numValues) const
     {
         TraceDetailLevel level;
@@ -378,7 +354,6 @@ private:
         for (int32_t column = 0; column < numChannels; column++) {
 
             Trace trace;
-            trace.m_color = getDefaultColor(column);
 
             // Add full detail level
             {
@@ -449,6 +424,7 @@ bool g_bTraceShowAllPressed = false;
 bool g_bTraceTogglePressed[20] = {};  // Keys 0-9, with and without shift
 bool g_bTraceToggleExclusive = false;
 bool g_bPlotModeSwitchPressed = false;
+bool g_bColorMapPressed = false;
 
 class GuiRenderer
 {
@@ -471,6 +447,7 @@ public:
 
         // Setup Style
         ImGui::StyleColorsDark();
+        ImPlot::SetColormap(m_colorMapIdx);
 
         m_frameCount = data.getNumValues();
         m_frameCurrent = m_frameCount / 2;
@@ -649,6 +626,11 @@ public:
             else {
                 m_frameCurrent = 0;
             }
+        }
+
+        if (g_bColorMapPressed) {
+            g_bColorMapPressed = false;
+            cycleToNextColorMap();
         }
     }
 
@@ -1016,6 +998,12 @@ public:
         }
     }
 
+    void cycleToNextColorMap()
+    {
+        m_colorMapIdx = ((m_colorMapIdx + 1) % ImPlotColormap_COUNT);
+        ImPlot::SetColormap(m_colorMapIdx);
+    }
+
 private:
     enum PlotMode
     {
@@ -1042,6 +1030,7 @@ private:
     uint32_t m_levelCurrent = 0;
     uint64_t m_frameCurrent = 0;
     uint64_t m_frameCount = 0;
+    ImPlotColormap m_colorMapIdx = kDefaultColorMap;
 };
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
@@ -1099,6 +1088,9 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
                 break;
             case GLFW_KEY_E:
                 g_bYZoomInPressed = true;
+                break;
+            case GLFW_KEY_C:
+                g_bColorMapPressed = true;
                 break;
             case GLFW_KEY_1:
             case GLFW_KEY_2:
