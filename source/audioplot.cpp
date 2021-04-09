@@ -20,8 +20,6 @@
 #include <vector>
 
 #define ARRSIZE(x) (sizeof(x) / (sizeof(x[0])))
-#define MAX(x, y) ((x) > (y) ? (x) : (y))
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 // settings
 const int kWindowWidth = 2400;
@@ -142,9 +140,9 @@ public:
     {
         if (m_traces.size() > 0) {
             double unscaledPointsForRange = getIndexForTime(range);
-            unscaledPointsForRange = MIN(getNumPoints(0), unscaledPointsForRange);
+            unscaledPointsForRange = std::min((double)getNumPoints(0), unscaledPointsForRange);
             if (level == 0) {
-                return unscaledPointsForRange;
+                return (uint64_t)unscaledPointsForRange;
             }
             else {
                 return (uint64_t)(unscaledPointsForRange / ((double)m_traces[0].m_levels[level].m_windowSize / 2.0));
@@ -315,7 +313,7 @@ private:
             double xMax = 0.0;
             double yMin = DBL_MAX;
             double yMax = -DBL_MAX;
-            const uint64_t indexEnd = MIN(indexStart + windowSize, numValues);
+            const uint64_t indexEnd = std::min(indexStart + windowSize, numValues);
             for (uint64_t index = indexStart; index < indexEnd; index++) {
                 const double y = getValue(channel, index); // -1 to +1
                 if (y < yMin) {
@@ -417,6 +415,7 @@ bool g_bXZoomInPressed = false;
 bool g_bXZoomOutPressed = false;
 bool g_bYZoomInPressed = false;
 bool g_bYZoomOutPressed = false;
+bool g_bYZoomResetPressed = false;
 bool g_bResetZoomPressed = false;
 bool g_bPanLeftPressed = false;
 bool g_bPanRightPressed = false;
@@ -453,6 +452,8 @@ public:
         m_frameCurrent = m_frameCount / 2;
 
         m_plotMode = (data.numTraces() > 8 ? PLOT_MODE_COMBINED : PLOT_MODE_SPREAD);
+
+        resetAxis(data);
     }
 
     void shutdown()
@@ -549,10 +550,7 @@ public:
         // Handle Keyboard Pan/Zoom Requests
         if (g_bResetZoomPressed) {
             g_bResetZoomPressed = false;
-            m_xAxisMinNext = 0;
-            m_xAxisMaxNext = data.getMaxTime();
-            m_yAxisMinNext = -1.0;
-            m_yAxisMaxNext = 1.0;
+            resetAxis(data);
         }
         else if (g_bXZoomInPressed) {
             g_bXZoomInPressed = false;
@@ -568,15 +566,24 @@ public:
         }
         else if (g_bYZoomInPressed) {
             g_bYZoomInPressed = false;
-            const double zoom = 0.2 * (m_yAxisMax - m_yAxisMin);
-            m_yAxisMaxNext -= zoom;
-            m_yAxisMinNext = -1.0 * m_yAxisMaxNext;
+            if (m_plotMode != PLOT_MODE_SPREAD) {
+                m_yAxisZoomLevel += 1;
+                m_yAxisMaxNext = std::pow(1.2, m_yAxisZoomLevel);
+                m_yAxisMinNext = -1.0 * m_yAxisMaxNext;
+            }
         }
         else if (g_bYZoomOutPressed) {
             g_bYZoomOutPressed = false;
-            const double zoom = 0.2 * (m_yAxisMax - m_yAxisMin);
-            m_yAxisMaxNext += zoom;
-            m_yAxisMinNext = -1.0 * m_yAxisMaxNext;
+            if (m_plotMode != PLOT_MODE_SPREAD) {
+                m_yAxisZoomLevel -= 1;
+                m_yAxisMaxNext = std::pow(1.2, m_yAxisZoomLevel);
+                m_yAxisMinNext = -1.0 * m_yAxisMaxNext;
+            }
+        }
+        else if (g_bYZoomResetPressed) {
+            g_bYZoomResetPressed = false;
+            m_yAxisMaxNext = 1.0;
+            m_yAxisMinNext = -1.0;
         }
         else if (g_bPanRightPressed) {
             g_bPanRightPressed = false;
@@ -830,7 +837,12 @@ public:
                 }
 
                 const double yticks[] = {m_yAxisMin, 0.0, m_yAxisMax};
-                ImPlot::SetNextPlotTicksY(yticks, ARRSIZE(yticks));
+                static char ylabelstrs[ARRSIZE(yticks)][32];
+                snprintf(ylabelstrs[0], sizeof(ylabelstrs[0]), "%.4lf", m_yAxisMin);
+                snprintf(ylabelstrs[1], sizeof(ylabelstrs[1]), "0.0");
+                snprintf(ylabelstrs[2], sizeof(ylabelstrs[2]), "%.4lf", m_yAxisMax);
+                const char* const ylabels[] = {ylabelstrs[0], ylabelstrs[1], ylabelstrs[2]};
+                ImPlot::SetNextPlotTicksY(yticks, ARRSIZE(yticks), ylabels);
 
                 char plotName[32];
                 snprintf(plotName, sizeof(plotName), "##Plot%" PRIi32, trace);
@@ -980,7 +992,7 @@ public:
                                         m_bPlotModeChanged;
         m_xAxisMin = m_xAxisMinNext;
         m_xAxisMax = m_xAxisMaxNext;
-        m_yAxisMax = MAX(abs(m_yAxisMaxNext), abs(m_yAxisMinNext));
+        m_yAxisMax = std::max(std::abs(m_yAxisMaxNext), std::abs(m_yAxisMinNext));
         m_yAxisMin = -1.0 * m_yAxisMax;
 
         return bPlotLimitsChanged;
@@ -996,6 +1008,15 @@ public:
             m_yAxisMinNext = plotLimits.Y.Min;
             m_yAxisMaxNext = plotLimits.Y.Max;
         }
+    }
+
+    void resetAxis(AudioData& data)
+    {
+        m_xAxisMinNext = 0;
+        m_xAxisMaxNext = data.getMaxTime();
+        m_yAxisMinNext = -1.0;
+        m_yAxisMaxNext = 1.0;
+        m_yAxisZoomLevel = 0;
     }
 
     void cycleToNextColorMap()
@@ -1025,6 +1046,7 @@ private:
     double m_yAxisMax = 0;
     double m_yAxisMinNext = 0;
     double m_yAxisMaxNext = 0;
+    int32_t m_yAxisZoomLevel = 0;
     uint64_t m_plotStartIdx = 0;
     uint64_t m_plotEndIdx = 0;
     uint32_t m_levelCurrent = 0;
@@ -1088,6 +1110,9 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
                 break;
             case GLFW_KEY_E:
                 g_bYZoomInPressed = true;
+                break;
+            case GLFW_KEY_R:
+                g_bYZoomResetPressed = true;
                 break;
             case GLFW_KEY_C:
                 g_bColorMapPressed = true;
