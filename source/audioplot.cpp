@@ -453,7 +453,8 @@ public:
 
         m_plotMode = (data.numTraces() > 8 ? PLOT_MODE_COMBINED : PLOT_MODE_SPREAD);
 
-        resetAxis(data);
+        resetXAxis(data);
+        resetYAxis();
     }
 
     void shutdown()
@@ -550,7 +551,8 @@ public:
         // Handle Keyboard Pan/Zoom Requests
         if (g_bResetZoomPressed) {
             g_bResetZoomPressed = false;
-            resetAxis(data);
+            resetXAxis(data);
+            resetYAxis();
         }
         else if (g_bXZoomInPressed) {
             g_bXZoomInPressed = false;
@@ -582,8 +584,7 @@ public:
         }
         else if (g_bYZoomResetPressed) {
             g_bYZoomResetPressed = false;
-            m_yAxisMaxNext = 1.0;
-            m_yAxisMinNext = -1.0;
+            resetYAxis();
         }
         else if (g_bPanRightPressed) {
             g_bPanRightPressed = false;
@@ -1010,10 +1011,14 @@ public:
         }
     }
 
-    void resetAxis(AudioData& data)
+    void resetXAxis(AudioData& data)
     {
         m_xAxisMinNext = 0;
         m_xAxisMaxNext = data.getMaxTime();
+    }
+
+    void resetYAxis()
+    {
         m_yAxisMinNext = -1.0;
         m_yAxisMaxNext = 1.0;
         m_yAxisZoomLevel = 0;
