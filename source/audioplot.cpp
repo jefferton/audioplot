@@ -168,11 +168,6 @@ public:
         return &m_traces[trace].m_levels[level].m_points[0];
     }
 
-    const Point* getSpreadPointArray(int32_t trace, int32_t level) const
-    {
-        return &m_traces[trace].m_levels[level].m_spreadPoints[0];
-    }
-
     uint32_t getNumLevels() const
     {
         return (uint32_t)m_traces[0].m_levels.size();
@@ -182,7 +177,6 @@ private:
     struct TraceDetailLevel
     {
         std::vector<Point> m_points;
-        std::vector<Point> m_spreadPoints;
         uint64_t m_windowSize;
         double m_windowTime;
     };
@@ -382,26 +376,6 @@ private:
             // std::cout << "        Channel " << column << " processed\n";
         }
 
-        const int32_t numTraces = m_traces.size();
-        const double scale = (1.0 / (double)numTraces);
-        for (int32_t trace = 0; trace < numTraces; trace++) {
-
-            const double offset = (1.0 - ((trace + 0.5) * (2.0 / (double)numTraces)));
-            for (uint32_t level = 0; level < m_traces[trace].m_levels.size(); level++) {
-
-                const size_t numPoints = m_traces[trace].m_levels[level].m_points.size();
-                m_traces[trace].m_levels[level].m_spreadPoints.reserve(numPoints);
-
-                for (uint64_t point = 0; point < numPoints; point++) {
-
-                    Point p = m_traces[trace].m_levels[level].m_points[point];
-                    p.y *= scale;
-                    p.y += offset;
-                    m_traces[trace].m_levels[level].m_spreadPoints.push_back(p);
-                }
-            }
-        }
-
         // std::cout << "    Finished Processing.\n";
     }
 };
@@ -568,16 +542,16 @@ public:
         }
         else if (g_bYZoomInPressed) {
             g_bYZoomInPressed = false;
+            m_yAxisZoomLevel += 1;
             if (m_plotMode != PLOT_MODE_SPREAD) {
-                m_yAxisZoomLevel += 1;
                 m_yAxisMaxNext = std::pow(1.2, m_yAxisZoomLevel);
                 m_yAxisMinNext = -1.0 * m_yAxisMaxNext;
             }
         }
         else if (g_bYZoomOutPressed) {
             g_bYZoomOutPressed = false;
+            m_yAxisZoomLevel -= 1;
             if (m_plotMode != PLOT_MODE_SPREAD) {
-                m_yAxisZoomLevel -= 1;
                 m_yAxisMaxNext = std::pow(1.2, m_yAxisZoomLevel);
                 m_yAxisMinNext = -1.0 * m_yAxisMaxNext;
             }
@@ -879,6 +853,40 @@ public:
         ImGui::End();
     }
 
+    struct SpreadLinePlot
+    {
+        SpreadLinePlot(const char* traceName, const Point* pointArray, uint64_t numPoints, double yScale, double yOffset)
+        : m_traceName(traceName)
+        , m_pointArray(pointArray)
+        , m_numPoints(numPoints)
+        , m_yScale(yScale)
+        , m_yOffset(yOffset)
+        {
+        }
+
+        void PlotLine() const
+        {
+            const int offset = 0;
+            ImPlot::PlotLineG(m_traceName, &SpreadLinePlot::getPoint, (void*)this, m_numPoints, offset);
+        }
+
+        static ImPlotPoint getPoint(void* data, int idx)
+        {
+            const SpreadLinePlot* _this = (SpreadLinePlot*)data;
+            const Point* pointArray = _this->m_pointArray;
+            Point p = pointArray[idx];
+            p.y *= _this->m_yScale;
+            p.y += _this->m_yOffset;
+            return p;
+        }
+
+        const char* m_traceName;
+        const Point* m_pointArray;
+        const uint64_t m_numPoints;
+        const double m_yScale;
+        const double m_yOffset;
+    };
+
     void drawTraceLines(AudioData& data, int32_t traceStart, int32_t traceEnd, bool bShowMarkers, bool bSpread)
     {
         if (bShowMarkers) {
@@ -888,12 +896,26 @@ public:
         for (int32_t trace = traceStart; trace < traceEnd; trace++) {
             if (data.isTraceVisible(trace)) {
                 ImPlot::PushStyleColor(ImPlotCol_Line, data.getTraceColor(trace));
-                const Point* pointArray = bSpread ? data.getSpreadPointArray(trace, m_levelCurrent)
-                                                  : data.getPointArray(trace, m_levelCurrent);
-                const int count = m_plotEndIdx - m_plotStartIdx;
-                const int offset = 0;
-                const int stride = sizeof(Point);
-                ImPlot::PlotLine(data.getTraceName(trace), &pointArray[m_plotStartIdx].x, &pointArray[m_plotStartIdx].y, count, offset, stride);
+
+                const Point* pointArray = data.getPointArray(trace, m_levelCurrent);
+                const int numPoints = m_plotEndIdx - m_plotStartIdx;
+                if (bSpread) {
+                    const int32_t numTraces = traceEnd - traceStart;
+                    const double yScale = (1.0 / (double)numTraces) * std::pow(1.2, m_yAxisZoomLevel);
+                    const double yOffset = (1.0 - ((trace + 0.5) * (2.0 / (double)numTraces)));
+                    SpreadLinePlot slp(data.getTraceName(trace),
+                                       &pointArray[m_plotStartIdx],
+                                       numPoints, yScale, yOffset);
+                    slp.PlotLine();
+                }
+                else {
+                    const int offset = 0;
+                    const size_t stride = sizeof(Point);
+                    ImPlot::PlotLine(data.getTraceName(trace),
+                                     &pointArray[m_plotStartIdx].x, &pointArray[m_plotStartIdx].y,
+                                     numPoints, offset, stride);
+                }
+
                 ImPlot::PopStyleColor(1);
             }
         }
