@@ -770,6 +770,8 @@ public:
 
         if (ImPlot::BeginPlot(plotName, "Time (s)", NULL, plotWindowSize, plotFlags, xAxisFlags, yAxisFlags)) {
 
+            ImPlot::SetLegendLocation(ImPlotLocation_North, ImPlotOrientation_Horizontal, true);
+
             const ImPlotLimits plotLimits = ImPlot::GetPlotLimits();
             detectPlotLimitsChangesFromMouse(plotLimits);
 
@@ -813,20 +815,17 @@ public:
                      ImGuiWindowFlags_NoScrollWithMouse);
 
         const int32_t numVisibleTraces = data.getNumVisibleTraces();
-        const ImVec2 childSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y / numVisibleTraces);
-
         const bool bPlotLimitsChanged = processPlotLimitsChanges();
-
-        int32_t traceCount = 0;
-        for (int32_t trace = 0; trace < data.numTraces(); trace++) {
-            if (!data.isTraceVisible(trace)) {
-                continue;
-            }
-            traceCount++;
-
-            char childName[32];
-            snprintf(childName, sizeof(childName), "Child%" PRIi32, trace);
-            if (ImGui::BeginChild(childName, childSize)) {
+        const ImPlotSubplotFlags subplotFlags = ImPlotSubplotFlags_NoResize |
+                                                ImPlotSubplotFlags_ShareItems |
+                                                ImPlotSubplotFlags_LinkCols |
+                                                ImPlotSubplotFlags_LinkAllX;
+        if (ImPlot::BeginSubplots("##Plots", numVisibleTraces, 1, ImGui::GetContentRegionAvail(), subplotFlags)) {
+            ImPlot::SetLegendLocation(ImPlotLocation_North, ImPlotOrientation_Horizontal, true);
+            for (int32_t trace = 0; trace < data.numTraces(); trace++) {
+                if (!data.isTraceVisible(trace)) {
+                    continue;
+                }
 
                 if (bPlotLimitsChanged) {
                     ImPlot::SetNextPlotLimitsX(m_xAxisMin, m_xAxisMax, ImGuiCond_Always);
@@ -845,13 +844,10 @@ public:
                 const char* const ylabels[] = {ylabelstrs[0], ylabelstrs[1], ylabelstrs[2]};
                 ImPlot::SetNextPlotTicksY(yticks, ARRSIZE(yticks), ylabels);
 
-                char plotName[32];
-                snprintf(plotName, sizeof(plotName), "##Plot%" PRIi32, trace);
-                const char* xAxisLabel = (traceCount == numVisibleTraces ? "Time (s)" : NULL);
                 const ImPlotFlags plotFlags = ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect;
                 const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_None;
                 const ImPlotAxisFlags yAxisFlags = ImPlotAxisFlags_Lock;
-                if (ImPlot::BeginPlot(plotName, xAxisLabel, NULL, childSize, plotFlags, xAxisFlags, yAxisFlags)) {
+                if (ImPlot::BeginPlot("", "Time (s)", NULL, ImVec2(), plotFlags, xAxisFlags, yAxisFlags)) {
 
                     const ImPlotLimits plotLimits = ImPlot::GetPlotLimits();
                     detectPlotLimitsChangesFromMouse(plotLimits);
@@ -860,7 +856,8 @@ public:
 
                     uint64_t numPointsVisible = data.getNumPointsInRange(timeRange, m_levelCurrent);
 
-                    if (bPlotLimitsChanged && (traceCount == 1)) {
+                    const bool bFirstTrace = (trace == 0);
+                    if (bPlotLimitsChanged && bFirstTrace) {
                         numPointsVisible = adjustPlotDetailLevel(data, timeRange, numPointsVisible);
                         adjustDataBounds(data, plotLimits.X.Min, plotLimits.X.Max);
                     }
@@ -876,8 +873,8 @@ public:
 
                     ImPlot::EndPlot();
                 }
-                ImGui::EndChild();
             }
+            ImPlot::EndSubplots();
         }
         ImGui::End();
     }
@@ -979,11 +976,10 @@ public:
     void drawCursorLine(AudioData& data)
     {
         const double timeCurrent = data.getTime(m_frameCurrent);
-        ImVec2 rmin = ImPlot::PlotToPixels(ImPlotPoint(timeCurrent, m_yAxisMin));
-        ImVec2 rmax = ImPlot::PlotToPixels(ImPlotPoint(timeCurrent, m_yAxisMax));
-        ImPlot::PushPlotClipRect();
-        ImGui::GetWindowDrawList()->AddLine(rmin, rmax, ImColor(255, 255, 255));
-        ImPlot::PopPlotClipRect();
+        const double cursorPosX[] = {timeCurrent};
+        ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(255, 255, 255, 255));
+        ImPlot::PlotVLines("##Cursor", cursorPosX, 1);
+        ImPlot::PopStyleColor();
     }
 
     bool processPlotLimitsChanges()
