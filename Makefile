@@ -3,6 +3,7 @@ CC = gcc
 
 SOURCES =
 INCLUDES =
+DEFINES =
 LIBPATH =
 LIBS =
 
@@ -26,10 +27,12 @@ INCLUDES += -Isource/
 ##---------------------------------------------------------------------
 SOURCES += thirdparty/imgui/imgui.cpp
 SOURCES += thirdparty/imgui/imgui_draw.cpp
+SOURCES += thirdparty/imgui/imgui_tables.cpp
 SOURCES += thirdparty/imgui/imgui_impl_glfw.cpp
 SOURCES += thirdparty/imgui/imgui_impl_opengl3.cpp
 SOURCES += thirdparty/imgui/imgui_widgets.cpp
-INCLUDES += -Ithirdparty/imgui/ -DIMGUI_IMPL_OPENGL_LOADER_GL3W
+INCLUDES += -Ithirdparty/imgui/
+DEFINES += -DIMGUI_IMPL_OPENGL_LOADER_GL3W -DIMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS
 
 ##---------------------------------------------------------------------
 ## GL3W - https://github.com/skaslev/gl3w (generated files bundled with imgui)
@@ -88,16 +91,16 @@ CXXFLAGS = -O3 -std=c++11 -Wall -Wextra -Wformat
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 
 %.o:source/%.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
 
 %.o:thirdparty/imgui/%.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
 
 %.o:thirdparty/implot/%.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
 
 %.o:thirdparty/gl3w/GL/%.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
 
 all: $(EXE)
 	@echo Build complete for $(EXE)

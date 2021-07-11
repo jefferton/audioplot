@@ -31,11 +31,11 @@ popd > /dev/null
 ## Checkout specific git commits
 ##---------------------------------------------------------------------
 pushd deps/imgui > /dev/null
-git checkout 770c9953  # docking branch tip as of 9/13/2020
+git checkout a11f3681  # docking branch tip as of 7/11/2021
 popd > /dev/null
 
 pushd deps/implot > /dev/null
-git checkout bb84461   # master branch tip as of 9/13/2020
+git checkout v0.11
 popd > /dev/null
 
 pushd deps/portable-file-dialogs > /dev/null
@@ -61,10 +61,10 @@ cp -R deps/imgui/examples/libs/gl3w/* \
       thirdparty/gl3w
 
 mkdir -p thirdparty/imgui
-cp deps/imgui/examples/imgui_impl_glfw.cpp \
-   deps/imgui/examples/imgui_impl_glfw.h \
-   deps/imgui/examples/imgui_impl_opengl3.cpp \
-   deps/imgui/examples/imgui_impl_opengl3.h \
+cp deps/imgui/backends/imgui_impl_glfw.cpp \
+   deps/imgui/backends/imgui_impl_glfw.h \
+   deps/imgui/backends/imgui_impl_opengl3.cpp \
+   deps/imgui/backends/imgui_impl_opengl3.h \
    deps/imgui/*.cpp \
    deps/imgui/*.h \
    deps/imgui/LICENSE.txt \

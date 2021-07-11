@@ -327,12 +327,12 @@ private:
             }
 
             if (xMin < xMax) {
-                level.m_points.push_back(Point({xMin, yMin}));
-                level.m_points.push_back(Point({xMax, yMax}));
+                level.m_points.push_back(Point(xMin, yMin));
+                level.m_points.push_back(Point(xMax, yMax));
             }
             else {
-                level.m_points.push_back(Point({xMax, yMax}));
-                level.m_points.push_back(Point({xMin, yMin}));
+                level.m_points.push_back(Point(xMax, yMax));
+                level.m_points.push_back(Point(xMin, yMin));
             }
         }
 
@@ -362,7 +362,7 @@ private:
                 for (uint64_t index = 0; index < numValues; index++) {
                     double x = getTime(index);
                     double y = getValue(column, index); // -1 to +1
-                    level.m_points.push_back(Point({x, y}));
+                    level.m_points.push_back(Point(x, y));
                 }
                 trace.m_levels.push_back(std::move(level));
             }
@@ -446,7 +446,7 @@ public:
 
         // Setup Style
         ImGui::StyleColorsDark();
-        ImPlot::SetColormap(m_colorMapIdx);
+        ImPlot::PushColormap(m_colorMapIdx);
 
         m_frameCount = data.getNumValues();
         m_frameCurrent = m_frameCount / 2;
@@ -1021,8 +1021,9 @@ public:
 
     void cycleToNextColorMap()
     {
-        m_colorMapIdx = ((m_colorMapIdx + 1) % ImPlotColormap_COUNT);
-        ImPlot::SetColormap(m_colorMapIdx);
+        m_colorMapIdx = ((m_colorMapIdx + 1) % ImPlot::GetColormapCount());
+        ImPlot::PopColormap();
+        ImPlot::PushColormap(m_colorMapIdx);
     }
 
 private:
