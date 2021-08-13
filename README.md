@@ -23,6 +23,7 @@ Open a supported audio file in the audioplot gui:
     Arrow Keys                       --> Scroll Cursor Slow (Up/Down) or Fast (Left/Right)
     W/A/S/D keys                     --> Horizontal Pan (A/D) and Zoom (W/S)
     Q/E keys                         --> Vertical Zoom (Q/E)
+    F key                            --> Vertical Zoom to Fit Data
     R key                            --> Reset Vertical Zoom
     Space Bar                        --> Reset Pan and Horizontal + Vertical Zoom
     Tab Key                          --> Switch Plot Modes (Combined, Split, Multiple)

@@ -300,8 +300,8 @@ private:
         level.m_windowTime = getTime(windowSize);
 
         // Resample using the min and max point in each window
-        level.m_points.reserve(numValues);
-        for (uint64_t indexStart = 0; indexStart < (numValues + windowSize); indexStart += windowSize) {
+        level.m_points.reserve(numValues + 1);
+        for (uint64_t indexStart = 0; indexStart < numValues; indexStart += windowSize) {
 
             double xMin = 0.0;
             double xMax = 0.0;
@@ -329,6 +329,7 @@ private:
                 level.m_points.push_back(Point(xMin, yMin));
             }
         }
+        level.m_points.push_back(Point(getTime(numValues-1), getValue(channel, numValues-1)));
 
         return level;
     }
@@ -390,6 +391,7 @@ bool g_bXZoomOutPressed = false;
 bool g_bYZoomInPressed = false;
 bool g_bYZoomOutPressed = false;
 bool g_bYZoomResetPressed = false;
+bool g_bYFitPressed = false;
 bool g_bResetZoomPressed = false;
 bool g_bPanLeftPressed = false;
 bool g_bPanRightPressed = false;
@@ -460,6 +462,8 @@ public:
         m_bPlotModeChanged = false;
 
         // ImGui::ShowMetricsWindow();
+
+        // drawDebugWindow(data);
 
         ImGui::PopStyleVar();  // ImGuiStyleVar_WindowRounding
 
@@ -544,7 +548,7 @@ public:
             g_bYZoomInPressed = false;
             m_yAxisZoomLevel += 1;
             if (m_plotMode != PLOT_MODE_SPREAD) {
-                m_yAxisMaxNext = std::pow(1.2, m_yAxisZoomLevel);
+                m_yAxisMaxNext = yMaxForZoomLevel(m_yAxisZoomLevel);
                 m_yAxisMinNext = -1.0 * m_yAxisMaxNext;
             }
         }
@@ -552,7 +556,7 @@ public:
             g_bYZoomOutPressed = false;
             m_yAxisZoomLevel -= 1;
             if (m_plotMode != PLOT_MODE_SPREAD) {
-                m_yAxisMaxNext = std::pow(1.2, m_yAxisZoomLevel);
+                m_yAxisMaxNext = yMaxForZoomLevel(m_yAxisZoomLevel);
                 m_yAxisMinNext = -1.0 * m_yAxisMaxNext;
             }
         }
@@ -571,6 +575,10 @@ public:
             const double pan = 0.2 * (m_xAxisMax - m_xAxisMin);
             m_xAxisMinNext -= pan;
             m_xAxisMaxNext -= pan;
+        }
+        else if (g_bYFitPressed) {
+            g_bYFitPressed = false;
+            m_bYFitRequested = true;
         }
 
         // Handle Keyboard Cursor Changes
@@ -700,6 +708,30 @@ public:
         ImGui::End();
     }
 
+    void fitYLimitsToData(const AudioData& data)
+    {
+        double yMax = -DBL_MAX;
+        for (int32_t trace = 0; trace < data.numTraces(); trace++) {
+            if (!data.isTraceVisible(trace)) {
+                continue;
+            }
+
+            for (uint64_t ix = m_plotStartIdx; ix < m_plotEndIdx; ix++) {
+                const double value = std::abs(data.getPointArray(trace, m_levelCurrent)[ix].y);
+                if (value > yMax) {
+                    yMax = value;
+                }
+            }
+        }
+
+        if (yMax != -DBL_MAX) {
+            m_yAxisMinNext = -1.05 * yMax;
+            m_yAxisMaxNext =  1.05 * yMax;
+        }
+
+        m_yAxisZoomLevel = zoomLevelForYMax(m_yAxisMaxNext);
+    }
+
     void drawCombinedPlotWindow(AudioData& data)
     {
         ImGuiViewport* pMainViewport = ImGui::GetMainViewport();
@@ -717,6 +749,11 @@ public:
                      ImGuiWindowFlags_NoScrollWithMouse);
 
         const bool bSpreadEnabled = (m_plotMode == PLOT_MODE_SPREAD) && !m_bExclusiveTraceMode;
+
+        if (m_bYFitRequested) {
+            m_bYFitRequested = false;
+            fitYLimitsToData(data);
+        }
 
         const bool bPlotLimitsChanged = processPlotLimitsChanges();
 
@@ -901,7 +938,7 @@ public:
                 const int numPoints = m_plotEndIdx - m_plotStartIdx;
                 if (bSpread) {
                     const int32_t numTraces = traceEnd - traceStart;
-                    const double yScale = (1.0 / (double)numTraces) * std::pow(1.2, m_yAxisZoomLevel);
+                    const double yScale = (1.0 / (double)numTraces) * yMaxForZoomLevel(m_yAxisZoomLevel);
                     const double yOffset = (1.0 - ((trace + 0.5) * (2.0 / (double)numTraces)));
                     SpreadLinePlot slp(data.getTraceName(trace),
                                        &pointArray[m_plotStartIdx],
@@ -1049,6 +1086,56 @@ public:
         ImPlot::PushColormap(m_colorMapIdx);
     }
 
+	void drawDebugWindow(AudioData& data)
+    {
+        ImGui::Begin("Debug Window", NULL);
+        ImGui::Text("%20s : %f", "m_xAxisMin", m_xAxisMin);
+        ImGui::Text("%20s : %f", "m_xAxisMin", m_xAxisMin);
+        ImGui::Text("%20s : %f", "m_xAxisMax", m_xAxisMax);
+        ImGui::Text("%20s : %f", "m_xAxisMinNext", m_xAxisMinNext);
+        ImGui::Text("%20s : %f", "m_xAxisMaxNext", m_xAxisMaxNext);
+        ImGui::Text("%20s : %f", "m_yAxisMin", m_yAxisMin);
+        ImGui::Text("%20s : %f", "m_yAxisMax", m_yAxisMax);
+        ImGui::Text("%20s : %f", "m_yAxisMinNext", m_yAxisMinNext);
+        ImGui::Text("%20s : %f", "m_yAxisMaxNext", m_yAxisMaxNext);
+        ImGui::Text("%20s : %" PRIi32, "m_yAxisZoomLevel", m_yAxisZoomLevel);
+        ImGui::Text("%20s : %" PRIu64, "m_plotStartIdx", m_plotStartIdx);
+        ImGui::Text("%20s : %" PRIu64, "m_plotEndIdx", m_plotEndIdx);
+        ImGui::Text("%20s : %" PRIu32, "m_levelCurrent", m_levelCurrent);
+        ImGui::Text("%20s : %" PRIu64, "m_frameCurrent", m_frameCurrent);
+        ImGui::Text("%20s : %" PRIu64, "m_frameCount", m_frameCount);
+        ImGui::Text("%20s : %" PRIi32, "data.getNumChannels()", data.getNumChannels());
+        ImGui::Text("%20s : %" PRIu64, "data.getNumValues()", data.getNumValues());
+        ImGui::Text("%20s : %f", "data.getMaxTime()", data.getMaxTime());
+        ImGui::Text("%20s : %" PRIi32, "data.numTraces()", data.numTraces());
+        ImGui::Text("%20s : 0x%" PRIx64, "data.getTracesVisibleBitmap()", data.getTracesVisibleBitmap());
+        ImGui::Text("%20s : %" PRIi32, "data.getNumVisibleTraces()", data.getNumVisibleTraces());
+        ImGui::Text("%20s : %" PRIu32, "data.getNumLevels()", data.getNumLevels());
+        for (uint32_t level = 0; level < data.getNumLevels(); level++) {
+            ImGui::Text("data.getNumPoints(%d) : %" PRIu64, level, data.getNumPoints(level));
+        }
+
+        ImGui::End();
+    }
+	
+    static double yMaxForZoomLevel(int32_t level)
+    {
+        return std::pow(1.2, level);
+    }
+
+    static int32_t zoomLevelForYMax(double yMax)
+    {
+        int32_t level = 0;
+        while (yMaxForZoomLevel(level) < yMax && yMaxForZoomLevel(level + 1) < yMax) {
+            level += 1;
+        }
+        while (yMaxForZoomLevel(level) > yMax && yMaxForZoomLevel(level - 1) > yMax) {
+            level -= 1;
+        }
+        return level;
+    }
+
+
 private:
     enum PlotMode
     {
@@ -1061,6 +1148,7 @@ private:
     PlotMode m_plotMode = PLOT_MODE_COMBINED;
     bool m_bPlotModeChanged = false;
     bool m_bExclusiveTraceMode = false;
+    bool m_bYFitRequested = false;
     uint64_t m_previousTracesVisibleBitmap = 0;
     double m_xAxisMin = 0;
     double m_xAxisMax = 0;
@@ -1134,6 +1222,9 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
                 break;
             case GLFW_KEY_E:
                 g_bYZoomInPressed = true;
+                break;
+            case GLFW_KEY_F:
+                g_bYFitPressed = true;
                 break;
             case GLFW_KEY_R:
                 g_bYZoomResetPressed = true;
