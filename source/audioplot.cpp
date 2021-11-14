@@ -749,41 +749,41 @@ public:
                      ImGuiWindowFlags_NoScrollWithMouse);
 
         const bool bSpreadEnabled = (m_plotMode == PLOT_MODE_SPREAD) && !m_bExclusiveTraceMode;
+        const char* plotName = bSpreadEnabled ? "##SPREAD" : "##COMBINED";
+        ImVec2 plotWindowSize = ImGui::GetContentRegionAvail();
+        const ImPlotFlags plotFlags = ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect;
 
-        if (m_bYFitRequested) {
-            m_bYFitRequested = false;
-            fitYLimitsToData(data);
-        }
+        if (ImPlot::BeginPlot(plotName, plotWindowSize, plotFlags)) {
 
-        const bool bPlotLimitsChanged = processPlotLimitsChanges();
+            if (m_bYFitRequested) {
+                m_bYFitRequested = false;
+                fitYLimitsToData(data);
+            }
 
-        if (bPlotLimitsChanged) {
-            ImPlot::SetNextPlotLimitsX(m_xAxisMin, m_xAxisMax, ImGuiCond_Always);
-            if (bSpreadEnabled) {
-                ImPlot::SetNextPlotLimitsY(-1.0, 1.0, ImGuiCond_Always);
+            const bool bPlotLimitsChanged = processPlotLimitsChanges();
+
+            if (bPlotLimitsChanged) {
+                ImPlot::SetupAxisLimits(ImAxis_X1, m_xAxisMin, m_xAxisMax, ImGuiCond_Always);
+                if (bSpreadEnabled) {
+                    ImPlot::SetupAxisLimits(ImAxis_Y1, -1.0, 1.0, ImGuiCond_Always);
+                }
+                else {
+                    ImPlot::SetupAxisLimits(ImAxis_Y1, m_yAxisMin, m_yAxisMax, ImGuiCond_Always);
+                }
             }
             else {
-                ImPlot::SetNextPlotLimitsY(m_yAxisMin, m_yAxisMax, ImGuiCond_Always);
+                ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, data.getMaxTime(), ImGuiCond_Once);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, -1.0, 1.0, ImGuiCond_Once);
             }
-        }
-        else {
-            ImPlot::SetNextPlotLimitsX(0.0, data.getMaxTime(), ImGuiCond_Once);
-            ImPlot::SetNextPlotLimitsY(-1.0, 1.0, ImGuiCond_Once);
-        }
 
-        ImVec2 plotWindowSize = ImGui::GetContentRegionAvail();
+            const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_None;
+            const ImPlotAxisFlags yAxisFlags = bSpreadEnabled ? (ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoTickLabels)
+                                                              : (ImPlotAxisFlags_Lock);
 
-        const ImPlotFlags plotFlags = ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect;
-        const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_None;
-        const ImPlotAxisFlags yAxisFlags = bSpreadEnabled ? (ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoTickLabels)
-                                                          : (ImPlotAxisFlags_Lock);
-        const char* plotName = bSpreadEnabled ? "##SPREAD" : "##COMBINED";
+            ImPlot::SetupAxes("Time (s)", NULL, xAxisFlags, yAxisFlags);
+            ImPlot::SetupLegend(ImPlotLocation_North, ImPlotLegendFlags_Horizontal | ImPlotLegendFlags_Outside);
 
-        if (ImPlot::BeginPlot(plotName, "Time (s)", NULL, plotWindowSize, plotFlags, xAxisFlags, yAxisFlags)) {
-
-            ImPlot::SetLegendLocation(ImPlotLocation_North, ImPlotOrientation_Horizontal, true);
-
-            const ImPlotLimits plotLimits = ImPlot::GetPlotLimits();
+            const ImPlotRect plotLimits = ImPlot::GetPlotLimits();
             detectPlotLimitsChangesFromMouse(plotLimits);
 
             const double timeRange = plotLimits.X.Size();
@@ -832,35 +832,41 @@ public:
                                                 ImPlotSubplotFlags_LinkCols |
                                                 ImPlotSubplotFlags_LinkAllX;
         if (ImPlot::BeginSubplots("##Plots", numVisibleTraces, 1, ImGui::GetContentRegionAvail(), subplotFlags)) {
-            ImPlot::SetLegendLocation(ImPlotLocation_North, ImPlotOrientation_Horizontal, true);
             for (int32_t trace = 0; trace < data.numTraces(); trace++) {
                 if (!data.isTraceVisible(trace)) {
                     continue;
                 }
 
-                if (bPlotLimitsChanged) {
-                    ImPlot::SetNextPlotLimitsX(m_xAxisMin, m_xAxisMax, ImGuiCond_Always);
-                    ImPlot::SetNextPlotLimitsY(m_yAxisMin, m_yAxisMax, ImGuiCond_Always);
-                }
-                else {
-                    ImPlot::SetNextPlotLimitsX(0.0, data.getMaxTime(), ImGuiCond_Once);
-                    ImPlot::SetNextPlotLimitsY(-1.0, 1.0, ImGuiCond_Once);
-                }
-
-                const double yticks[] = {m_yAxisMin, 0.0, m_yAxisMax};
-                static char ylabelstrs[ARRSIZE(yticks)][32];
-                snprintf(ylabelstrs[0], sizeof(ylabelstrs[0]), "%.4lf", m_yAxisMin);
-                snprintf(ylabelstrs[1], sizeof(ylabelstrs[1]), "0.0");
-                snprintf(ylabelstrs[2], sizeof(ylabelstrs[2]), "%.4lf", m_yAxisMax);
-                const char* const ylabels[] = {ylabelstrs[0], ylabelstrs[1], ylabelstrs[2]};
-                ImPlot::SetNextPlotTicksY(yticks, ARRSIZE(yticks), ylabels);
-
                 const ImPlotFlags plotFlags = ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect;
-                const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_None;
-                const ImPlotAxisFlags yAxisFlags = ImPlotAxisFlags_Lock;
-                if (ImPlot::BeginPlot("", "Time (s)", NULL, ImVec2(), plotFlags, xAxisFlags, yAxisFlags)) {
+                if (ImPlot::BeginPlot("", ImVec2(), plotFlags)) {
 
-                    const ImPlotLimits plotLimits = ImPlot::GetPlotLimits();
+                    if (trace == 0) {
+                        ImPlot::SetupLegend(ImPlotLocation_North, ImPlotLegendFlags_Horizontal | ImPlotLegendFlags_Outside);
+                    }
+
+                    if (bPlotLimitsChanged) {
+                        ImPlot::SetupAxisLimits(ImAxis_X1, m_xAxisMin, m_xAxisMax, ImGuiCond_Always);
+                        ImPlot::SetupAxisLimits(ImAxis_Y1, m_yAxisMin, m_yAxisMax, ImGuiCond_Always);
+
+                    }
+                    else {
+                        ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, data.getMaxTime(), ImGuiCond_Once);
+                        ImPlot::SetupAxisLimits(ImAxis_Y1, -1.0, 1.0, ImGuiCond_Once);
+                    }
+
+                    const double yticks[] = {m_yAxisMin, 0.0, m_yAxisMax};
+                    static char ylabelstrs[ARRSIZE(yticks)][32];
+                    snprintf(ylabelstrs[0], sizeof(ylabelstrs[0]), "%.4lf", m_yAxisMin);
+                    snprintf(ylabelstrs[1], sizeof(ylabelstrs[1]), "0.0");
+                    snprintf(ylabelstrs[2], sizeof(ylabelstrs[2]), "%.4lf", m_yAxisMax);
+                    const char* const ylabels[] = {ylabelstrs[0], ylabelstrs[1], ylabelstrs[2]};
+                    ImPlot::SetupAxisTicks(ImAxis_Y1, yticks, ARRSIZE(yticks), ylabels);
+
+                    const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_None;
+                    const ImPlotAxisFlags yAxisFlags = ImPlotAxisFlags_Lock;
+                    ImPlot::SetupAxes("Time (s)", NULL, xAxisFlags, yAxisFlags);
+
+                    const ImPlotRect plotLimits = ImPlot::GetPlotLimits();
                     detectPlotLimitsChangesFromMouse(plotLimits);
 
                     const double timeRange = plotLimits.X.Size();
@@ -903,8 +909,7 @@ public:
 
         void PlotLine() const
         {
-            const int offset = 0;
-            ImPlot::PlotLineG(m_traceName, &SpreadLinePlot::getPoint, (void*)this, m_numPoints, offset);
+            ImPlot::PlotLineG(m_traceName, &SpreadLinePlot::getPoint, (void*)this, m_numPoints);
         }
 
         static ImPlotPoint getPoint(void* data, int idx)
@@ -1054,7 +1059,7 @@ public:
         return bPlotLimitsChanged;
     }
 
-    void detectPlotLimitsChangesFromMouse(const ImPlotLimits& plotLimits)
+    void detectPlotLimitsChangesFromMouse(const ImPlotRect& plotLimits)
     {
         if ((plotLimits.X.Min != m_xAxisMin) || (plotLimits.X.Max != m_xAxisMax)) {
             m_xAxisMinNext = plotLimits.X.Min;

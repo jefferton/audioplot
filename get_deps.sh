@@ -35,7 +35,7 @@ git checkout a11f3681  # docking branch tip as of 7/11/2021
 popd > /dev/null
 
 pushd deps/implot > /dev/null
-git checkout v0.11
+git checkout 6ee15597  # master branch tip as of 10/20/2021
 popd > /dev/null
 
 pushd deps/portable-file-dialogs > /dev/null
