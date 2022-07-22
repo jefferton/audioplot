@@ -56,6 +56,15 @@ You may need to install `xorg-dev` and/or `libglfw3-dev` packages to build succe
     sudo apt-get install xorg-dev
     sudo apt-get install libglfw3-dev
 
+### Mac
+
+Audioplot has been built and tested successfully with Apple clang version 13.1.6
+on macOS 12.5 running on Apple Silicon.
+
+You may need to install `glfw` to build successfully.
+
+    brew install glfw
+
 ### Third-Party Dependencies
 
 The necessary third-party files for building audioplot have been copied from their

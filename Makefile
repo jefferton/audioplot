@@ -75,6 +75,11 @@ ifeq ($(UNAME_S),Linux)
 	LIBS += -lGL
 endif
 
+ifeq ($(UNAME_S),Darwin)
+    LIBS += $(shell pkg-config --static --libs glfw3)
+	INCLUDES += -Ithirdparty/glfw/
+endif
+
 ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
 	LIBS += -lglfw3 -lopengl32 -lglu32 -lgdi32
 	LIBPATH += -Lthirdparty/glfw/lib-mingw-w64

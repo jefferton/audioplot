@@ -416,7 +416,11 @@ public:
         io.ConfigFlags |= ImGuiViewportFlags_NoAutoMerge;
 
         // Setup Platform/Renderer bindings
+#if defined(__APPLE__)
+        const char* glsl_version = "#version 150";
+#else
         const char* glsl_version = "#version 330 core";
+#endif
         ImGui_ImplGlfw_InitForOpenGL(window, true);
         ImGui_ImplOpenGL3_Init(glsl_version);
 
@@ -1312,9 +1316,16 @@ int main(int argc, const char** argv)
     // ------------------------------
     glfwSetErrorCallback(errorCallback);
     glfwInit();
+#if defined(__APPLE__)
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
+#else
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#endif
 
     // glfw window creation
     // --------------------
