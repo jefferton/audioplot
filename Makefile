@@ -32,13 +32,7 @@ SOURCES += thirdparty/imgui/imgui_impl_glfw.cpp
 SOURCES += thirdparty/imgui/imgui_impl_opengl3.cpp
 SOURCES += thirdparty/imgui/imgui_widgets.cpp
 INCLUDES += -Ithirdparty/imgui/
-DEFINES += -DIMGUI_IMPL_OPENGL_LOADER_GL3W -DIMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS
-
-##---------------------------------------------------------------------
-## GL3W - https://github.com/skaslev/gl3w (generated files bundled with imgui)
-##---------------------------------------------------------------------
-SOURCES += thirdparty/gl3w/GL/gl3w.c
-INCLUDES += -Ithirdparty/gl3w/
+DEFINES += -DIMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS
 
 ##---------------------------------------------------------------------
 ## ImPlot - https://github.com/epezent/implot.git
@@ -71,13 +65,14 @@ INCLUDES += -Ithirdparty/stb/
 ##---------------------------------------------------------------------
 
 ifeq ($(UNAME_S),Linux)
-    LIBS += $(shell pkg-config --static --libs glfw3)
+	LIBS += $(shell pkg-config --static --libs glfw3)
 	LIBS += -lGL
 endif
 
 ifeq ($(UNAME_S),Darwin)
-    LIBS += $(shell pkg-config --static --libs glfw3)
-	INCLUDES += -Ithirdparty/glfw/
+	LIBS += $(shell pkg-config --static --libs glfw3)
+	INCLUDES += $(shell pkg-config --cflags glfw3)
+	LIBS += -framework OpenGL
 endif
 
 ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
@@ -103,9 +98,6 @@ OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 
 %.o:thirdparty/implot/%.cpp
 	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
-
-%.o:thirdparty/gl3w/GL/%.c
-	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
 
 all: $(EXE)
 	@echo Build complete for $(EXE)

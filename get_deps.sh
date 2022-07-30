@@ -31,11 +31,11 @@ popd > /dev/null
 ## Checkout specific git commits
 ##---------------------------------------------------------------------
 pushd deps/imgui > /dev/null
-git checkout a11f3681  # docking branch tip as of 7/11/2021
+git checkout 21fc57f2  # docking branch tip as of 7/8/2022
 popd > /dev/null
 
 pushd deps/implot > /dev/null
-git checkout 6ee15597  # master branch tip as of 10/20/2021
+git checkout 7a470b2e  # master branch tip as of 7/26/2022
 popd > /dev/null
 
 pushd deps/portable-file-dialogs > /dev/null
@@ -56,13 +56,10 @@ popd > /dev/null
 rm -rf thirdparty
 mkdir -p thirdparty/
 
-mkdir -p thirdparty/gl3w
-cp -R deps/imgui/examples/libs/gl3w/* \
-      thirdparty/gl3w
-
 mkdir -p thirdparty/imgui
 cp deps/imgui/backends/imgui_impl_glfw.cpp \
    deps/imgui/backends/imgui_impl_glfw.h \
+   deps/imgui/backends/imgui_impl_opengl3_loader.h \
    deps/imgui/backends/imgui_impl_opengl3.cpp \
    deps/imgui/backends/imgui_impl_opengl3.h \
    deps/imgui/*.cpp \
@@ -115,7 +112,9 @@ fi
 ##---------------------------------------------------------------------
 ## Modify imgui's default imconfig.h to enable 32-bit indices
 ##---------------------------------------------------------------------
-sed --in-place 's/\/\/#define ImDrawIdx/#define ImDrawIdx/' thirdparty/imgui/imconfig.h
+cp thirdparty/imgui/imconfig.h thirdparty/imgui/imconfig_orig.h
+sed 's/\/\/#define ImDrawIdx/#define ImDrawIdx/' thirdparty/imgui/imconfig_orig.h > thirdparty/imgui/imconfig.h
+rm -f thirdparty/imgui/imconfig_orig.h
 
 echo "thirdparty dependencies updated"
 echo "ready to run make and build audioplot.exe"

@@ -4,7 +4,6 @@
 
 #include "implot.h"
 
-#include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
 
 #include "audioplot_dr_mp3.h"
@@ -651,7 +650,7 @@ public:
                  m_frameCurrent + 1u, m_frameCount, data.getTime(m_frameCurrent), data.getMaxTime());
         static uint64_t min = 0;
         static uint64_t max = (m_frameCount - 1);
-        ImGui::SliderScalar("", ImGuiDataType_U64, &m_frameCurrent, &min, &max, lbl);
+        ImGui::SliderScalar("##Slider", ImGuiDataType_U64, &m_frameCurrent, &min, &max, lbl);
         ImGui::PopItemWidth();
 
         ImGui::Columns(data.getNumChannels() + 2);
@@ -916,7 +915,7 @@ public:
             ImPlot::PlotLineG(m_traceName, &SpreadLinePlot::getPoint, (void*)this, m_numPoints);
         }
 
-        static ImPlotPoint getPoint(void* data, int idx)
+        static ImPlotPoint getPoint(int idx, void* data)
         {
             const SpreadLinePlot* _this = (SpreadLinePlot*)data;
             const Point* pointArray = _this->m_pointArray;
@@ -1046,7 +1045,7 @@ public:
         const double timeCurrent = data.getTime(m_frameCurrent);
         const double cursorPosX[] = {timeCurrent};
         ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(255, 255, 255, 255));
-        ImPlot::PlotVLines("##Cursor", cursorPosX, 1);
+        ImPlot::PlotInfLines("##Cursor", cursorPosX, 1);
         ImPlot::PopStyleColor();
     }
 
@@ -1342,14 +1341,6 @@ int main(int argc, const char** argv)
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetKeyCallback(window, keyCallback);
-
-    // glw3: load all OpenGL function pointers
-    // ---------------------------------------
-    if (gl3wInit() != 0)
-    {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
-        return -1;
-    }
 
     GuiRenderer guiRenderer(audioData, window);
 
