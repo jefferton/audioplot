@@ -16,9 +16,8 @@
 #include <cmath>
 #include <iostream>
 #include <string>
+#include <array>
 #include <vector>
-
-#define ARRSIZE(x) (sizeof(x) / (sizeof(x[0])))
 
 // settings
 const int kWindowWidth = 2400;
@@ -304,8 +303,8 @@ private:
 
             double xMin = 0.0;
             double xMax = 0.0;
-            double yMin = DBL_MAX;
-            double yMax = -DBL_MAX;
+            double yMin = std::numeric_limits<double>::max();
+            double yMax = -std::numeric_limits<double>::max();
             const uint64_t indexEnd = std::min(indexStart + windowSize, numValues);
             for (uint64_t index = indexStart; index < indexEnd; index++) {
                 const double y = getValue(channel, index); // -1 to +1
@@ -395,7 +394,7 @@ bool g_bResetZoomPressed = false;
 bool g_bPanLeftPressed = false;
 bool g_bPanRightPressed = false;
 bool g_bTraceShowAllPressed = false;
-bool g_bTraceTogglePressed[20] = {};  // Keys 0-9, with and without shift
+std::array<bool,20> g_bTraceTogglePressed = {};  // Keys 0-9, with and without shift
 bool g_bTraceToggleExclusive = false;
 bool g_bPlotModeSwitchPressed = false;
 bool g_bColorMapPressed = false;
@@ -498,7 +497,7 @@ public:
             g_bTraceShowAllPressed = false;
             data.setAllTracesVisible(true);
         }
-        for (int32_t i = 0; i < (int32_t)ARRSIZE(g_bTraceTogglePressed); i++) {
+        for (int32_t i = 0; i < (int32_t)g_bTraceTogglePressed.size(); i++) {
             if (g_bTraceTogglePressed[i]) {
                 g_bTraceTogglePressed[i] = false;
                 if (i < data.numTraces()) {
@@ -713,7 +712,7 @@ public:
 
     void fitYLimitsToData(const AudioData& data)
     {
-        double yMax = -DBL_MAX;
+        double yMax = -std::numeric_limits<double>::max();
         for (int32_t trace = 0; trace < data.numTraces(); trace++) {
             if (!data.isTraceVisible(trace)) {
                 continue;
@@ -727,7 +726,7 @@ public:
             }
         }
 
-        if (yMax != -DBL_MAX) {
+        if (yMax != -std::numeric_limits<double>::max()) {
             m_yAxisMinNext = -1.05 * yMax;
             m_yAxisMaxNext =  1.05 * yMax;
         }
@@ -857,13 +856,13 @@ public:
                         ImPlot::SetupAxisLimits(ImAxis_Y1, -1.0, 1.0, ImGuiCond_Once);
                     }
 
-                    const double yticks[] = {m_yAxisMin, 0.0, m_yAxisMax};
-                    static char ylabelstrs[ARRSIZE(yticks)][32];
+                    const std::array<double, 3> yticks = {m_yAxisMin, 0.0, m_yAxisMax};
+                    static char ylabelstrs[yticks.size()][32];
                     snprintf(ylabelstrs[0], sizeof(ylabelstrs[0]), "%.4lf", m_yAxisMin);
                     snprintf(ylabelstrs[1], sizeof(ylabelstrs[1]), "0.0");
                     snprintf(ylabelstrs[2], sizeof(ylabelstrs[2]), "%.4lf", m_yAxisMax);
                     const char* const ylabels[] = {ylabelstrs[0], ylabelstrs[1], ylabelstrs[2]};
-                    ImPlot::SetupAxisTicks(ImAxis_Y1, yticks, ARRSIZE(yticks), ylabels);
+                    ImPlot::SetupAxisTicks(ImAxis_Y1, yticks.data(), yticks.size(), ylabels);
 
                     const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_None;
                     const ImPlotAxisFlags yAxisFlags = ImPlotAxisFlags_Lock;
