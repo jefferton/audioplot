@@ -39,7 +39,7 @@ git checkout 7a470b2e  # master branch tip as of 7/26/2022
 popd > /dev/null
 
 pushd deps/portable-file-dialogs > /dev/null
-git checkout 265c5af
+git checkout 5652fbd0  # main branch tip as of 7/29/2022
 popd > /dev/null
 
 pushd deps/dr_libs > /dev/null

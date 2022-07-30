@@ -11,8 +11,7 @@ std::string promptForFilename()
     pfd::open_file ofd = pfd::open_file("Choose Data File",
                                         "",                       // default_path
                                         { "Supported Files (.wav, .mp3, .ogg)",
-                                          "*.wav *.mp3 *.ogg" },  // filters
-                                        false);                   // disallow_multiselect
+                                          "*.wav *.mp3 *.ogg" }); // filters
     std::vector<std::string> ofdResult = ofd.result();
     if (ofdResult.size() != 1) {
         std::cout << "No File Selected\n";
