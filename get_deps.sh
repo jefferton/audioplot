@@ -47,7 +47,7 @@ git checkout c1f072e
 popd > /dev/null
 
 pushd deps/stb > /dev/null
-git checkout f54acd4
+git checkout 1ee679c   # v1.22 7/11/2021
 popd > /dev/null
 
 ##---------------------------------------------------------------------
