@@ -955,9 +955,10 @@ public:
                 else {
                     const int offset = 0;
                     const size_t stride = sizeof(Point);
+                    const ImPlotLineFlags flags = 0;
                     ImPlot::PlotLine(data.getTraceName(trace),
                                      &pointArray[m_plotStartIdx].x, &pointArray[m_plotStartIdx].y,
-                                     numPoints, offset, stride);
+                                     numPoints, flags, offset, stride);
                 }
 
                 ImPlot::PopStyleColor(1);
