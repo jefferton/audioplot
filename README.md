@@ -65,6 +65,21 @@ You may need to install `glfw` to build successfully.
 
     brew install glfw
 
+## CMake
+
+Audioplot has been build with CMake on llvm clang version 14.0.6 on macOS 13.1
+running on Apple Silicon
+
+    mkdir build
+    cd build
+    CC=/opt/homebrew/opt/llvm/bin/clang CXX=/opt/homebrew/opt/llvm/bin/clang++ cmake ..
+    cmake --build .
+
+You may need to install `glfw` and `llvm` to build successfully.
+
+    brew install glfw
+    brew install llvm
+
 ### Third-Party Dependencies
 
 The necessary third-party files for building audioplot have been copied from their
@@ -77,7 +92,6 @@ available for development, for example, to incorporate upstream changes.
 
 - dr_libs/README.md                (public domain)
 - gl3w/GL/glcorearb.h              (MIT license)
-- glfw/LICENSE.md                  (zlib/libpng license)
 - imgui/LICENSE.txt                (MIT license)
 - implot/LICENSE                   (MIT license)
 - portable-file-dialogs/COPYING    (WTFPL)
