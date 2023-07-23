@@ -10,6 +10,7 @@
 #include "audioplot_dr_wav.h"
 #include "audioplot_pfd.h"
 #include "audioplot_stb_vorbis.h"
+#include "audioplot_kiss_fft.h"
 
 #include <algorithm>
 #include <cinttypes>
@@ -171,6 +172,11 @@ public:
         return (uint32_t)m_traces[0].m_levels.size();
     }
 
+    const Spectrogram& spectrogram() const
+    {
+        return m_spectrogram;
+    }
+
 private:
     struct TraceDetailLevel
     {
@@ -189,6 +195,7 @@ private:
     std::vector<std::string> m_channelNames;
     std::vector<std::vector<double>> m_channelData;
     std::vector<Trace> m_traces;
+    Spectrogram m_spectrogram;
 
     double m_samplePeriod = 0.0;
     double m_maxTime = 0.0;
@@ -289,6 +296,8 @@ private:
         m_maxTime = (double)((double)frameCount / (double)sampleRate);
 
         initializeTraceData();
+
+        m_spectrogram.initialize(m_channelData);
     }
 
     TraceDetailLevel createDetailLevel(uint64_t windowSize, int32_t channel, uint64_t numValues) const
@@ -461,6 +470,9 @@ public:
         else if (m_plotMode == PLOT_MODE_MULTIPLE) {
             drawMultiPlotWindow(data);
         }
+        else if (m_plotMode == PLOT_MODE_SPECTROGRAM) {
+            drawSpectrogramPlotWindow(data);
+        }
         m_bPlotModeChanged = false;
 
         // ImGui::ShowMetricsWindow();
@@ -548,10 +560,12 @@ public:
         }
         else if (g_bYZoomInPressed) {
             g_bYZoomInPressed = false;
-            m_yAxisZoomLevel += 1;
-            if (m_plotMode != PLOT_MODE_SPREAD) {
-                m_yAxisMaxNext = yMaxForZoomLevel(m_yAxisZoomLevel);
-                m_yAxisMinNext = -1.0 * m_yAxisMaxNext;
+            if ((m_plotMode != PLOT_MODE_SPECTROGRAM) || (m_yAxisZoomLevel < 0)) {
+                m_yAxisZoomLevel += 1;
+                if (m_plotMode != PLOT_MODE_SPREAD) {
+                    m_yAxisMaxNext = yMaxForZoomLevel(m_yAxisZoomLevel);
+                    m_yAxisMinNext = -1.0 * m_yAxisMaxNext;
+                }
             }
         }
         else if (g_bYZoomOutPressed) {
@@ -898,6 +912,80 @@ public:
         ImGui::End();
     }
 
+    void drawSpectrogramPlotWindow(AudioData& data)
+    {
+        ImGuiViewport* pMainViewport = ImGui::GetMainViewport();
+        ImVec2 size = ImVec2(pMainViewport->Size.x, 5.0 * pMainViewport->Size.y / 6.0);
+        ImVec2 pos = ImVec2(pMainViewport->Pos.x, pMainViewport->Pos.y + (pMainViewport->Size.y / 6.0));
+        ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+        ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+        ImGui::SetNextWindowViewport(pMainViewport->ID);
+        ImGui::Begin("Plot Window", NULL,
+                     ImGuiWindowFlags_NoTitleBar |
+                     ImGuiWindowFlags_NoResize |
+                     ImGuiWindowFlags_NoMove |
+                     ImGuiWindowFlags_NoCollapse |
+                     ImGuiWindowFlags_NoScrollbar |
+                     ImGuiWindowFlags_NoScrollWithMouse);
+
+        ImPlot::PushColormap(ImPlotColormap_Plasma);
+
+        const int32_t numVisibleTraces = data.getNumVisibleTraces();
+        const bool bPlotLimitsChanged = processPlotLimitsChanges();
+        const ImPlotSubplotFlags subplotFlags = ImPlotSubplotFlags_NoResize |
+                                                ImPlotSubplotFlags_ShareItems |
+                                                ImPlotSubplotFlags_LinkCols |
+                                                ImPlotSubplotFlags_LinkAllX;
+        if (ImPlot::BeginSubplots("##Plots", numVisibleTraces, 1, ImGui::GetContentRegionAvail(), subplotFlags)) {
+            for (int32_t trace = 0; trace < data.numTraces(); trace++) {
+                if (!data.isTraceVisible(trace)) {
+                    continue;
+                }
+
+                const ImPlotFlags plotFlags = ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect;
+                if (ImPlot::BeginPlot("", ImVec2(), plotFlags)) {
+
+                    const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_NoTickLabels;
+                    const ImPlotAxisFlags yAxisFlags = ImPlotAxisFlags_Lock;
+                    char yAxisLabel[32];
+                    snprintf(yAxisLabel, sizeof(yAxisLabel), "Channel %" PRIi32, trace + 1);
+                    ImPlot::SetupAxes(NULL, yAxisLabel, xAxisFlags, yAxisFlags);
+
+                    const double maxFreqKhz = data.spectrogram().max_frq();
+                    if (bPlotLimitsChanged) {
+                        ImPlot::SetupAxisLimits(ImAxis_X1, m_xAxisMin, m_xAxisMax, ImGuiCond_Always);
+                        double scaledFreqKhz = std::min(maxFreqKhz * m_yAxisMax, maxFreqKhz);
+                        ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, scaledFreqKhz, ImGuiCond_Always);
+
+                    }
+                    else {
+                        ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, data.getMaxTime(), ImGuiCond_Once);
+                        ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, maxFreqKhz, ImGuiCond_Once);
+                    }
+
+                    ImPlot::PlotHeatmap("",
+                                        data.spectrogram().data(trace).data(),
+                                        data.spectrogram().n_frq(),
+                                        data.spectrogram().n_bin(),
+                                        data.spectrogram().min_db(),
+                                        data.spectrogram().max_db(),
+                                        NULL,
+                                        {0.0, data.spectrogram().min_frq()},
+                                        {data.getMaxTime(), maxFreqKhz});
+
+                    updateCursorPosition(data);
+
+                    drawCursorLine(data);
+
+                    ImPlot::EndPlot();
+                }
+            }
+            ImPlot::EndSubplots();
+        }
+        ImPlot::PopColormap();
+        ImGui::End();
+    }
+
     struct SpreadLinePlot
     {
         SpreadLinePlot(const char* traceName, const Point* pointArray, uint64_t numPoints, double yScale, double yOffset)
@@ -1150,6 +1238,7 @@ private:
         PLOT_MODE_COMBINED,
         PLOT_MODE_SPREAD,
         PLOT_MODE_MULTIPLE,
+        PLOT_MODE_SPECTROGRAM,
         NUM_PLOT_MODES,
     };
 
@@ -1255,7 +1344,6 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             case GLFW_KEY_0:
                 g_bTraceToggleExclusive = !(mods & GLFW_MOD_CONTROL);
                 g_bTraceTogglePressed[9 + (mods & GLFW_MOD_SHIFT ? 10 : 0)] = true;
-                break;
                 break;
             case GLFW_KEY_GRAVE_ACCENT:
                 g_bTraceShowAllPressed = true;

@@ -4,6 +4,7 @@ Audioplot is a simple cross-platform waveform viewer for audio files.
 
 ![screenshot1](screenshot1.png)
 ![screenshot2](screenshot2.png)
+![screenshot3](screenshot3.png)
 
 ## Usage
 
@@ -96,3 +97,4 @@ available for development, for example, to incorporate upstream changes.
 - implot/LICENSE                   (MIT license)
 - portable-file-dialogs/COPYING    (WTFPL)
 - stb/LICENSE                      (MIT license/public domain)
+- kissfft/BSD-3-Clause             (BSD 3-Clause)

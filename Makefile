@@ -20,6 +20,7 @@ SOURCES += source/audioplot_dr_mp3.cpp
 SOURCES += source/audioplot_dr_wav.cpp
 SOURCES += source/audioplot_pfd.cpp
 SOURCES += source/audioplot_stb_vorbis.cpp
+SOURCES += source/audioplot_kiss_fft.cpp
 INCLUDES += -Isource/
 
 ##---------------------------------------------------------------------
@@ -61,6 +62,13 @@ INCLUDES += -Ithirdparty/dr_libs/
 INCLUDES += -Ithirdparty/stb/
 
 ##---------------------------------------------------------------------
+## KISS FFT - https://github.com/mborgerding/kissfft
+##---------------------------------------------------------------------
+SOURCES += thirdparty/kissfft/kiss_fft.c
+SOURCES += thirdparty/kissfft/kiss_fftr.c
+INCLUDES += -Ithirdparty/kissfft/
+
+##---------------------------------------------------------------------
 ## GLFW OPENGL WINDOW/CONTEXT/IO LIBRARY - https://github.com/glfw/glfw.git
 ##---------------------------------------------------------------------
 
@@ -98,6 +106,9 @@ OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 
 %.o:thirdparty/implot/%.cpp
 	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
+
+%.o:thirdparty/kissfft/%.c
+	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
 
 all: $(EXE)
 	@echo Build complete for $(EXE)

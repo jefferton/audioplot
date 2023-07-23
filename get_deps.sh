@@ -25,6 +25,10 @@ fi
 if [ ! -d stb ]; then
     git clone https://github.com/nothings/stb.git
 fi
+
+if [ ! -d kissfft ]; then
+    git clone https://github.com/mborgerding/kissfft.git
+fi
 popd > /dev/null
 
 ##---------------------------------------------------------------------
@@ -48,6 +52,10 @@ popd > /dev/null
 
 pushd deps/stb > /dev/null
 git checkout 1ee679c   # v1.22 7/11/2021
+popd > /dev/null
+
+pushd deps/kissfft > /dev/null
+git checkout 8f47a67   # v131.1.0 2/16/2021
 popd > /dev/null
 
 ##---------------------------------------------------------------------
@@ -90,6 +98,16 @@ mkdir -p thirdparty/pfd
 cp deps/portable-file-dialogs/portable-file-dialogs.h \
    deps/portable-file-dialogs/COPYING \
    thirdparty/pfd
+
+mkdir -p thirdparty/kissfft
+cp deps/kissfft/kiss_fft.h \
+   deps/kissfft/kiss_fftr.h \
+   deps/kissfft/kiss_fft_log.h \
+   deps/kissfft/kiss_fft.c \
+   deps/kissfft/kiss_fftr.c \
+   deps/kissfft/_kiss_fft_guts.h \
+   deps/kissfft/LICENSES/BSD-3-Clause \
+   thirdparty/kissfft
 
 mkdir -p thirdparty/glfw
 if [[ `uname` =~ "MINGW64" ]]; then

@@ -68,6 +68,25 @@ set_property(TARGET implot PROPERTY CXX_STANDARD 11)
 target_compile_options(implot PRIVATE -Wall -Wextra -pedantic -Werror -O3)
 
 ##---------------------------------------------------------------------
+## KISS FFT - https://github.com/mborgerding/kissfft
+##---------------------------------------------------------------------
+
+set(KISSFFT_HEADERS
+    thirdparty/kissfft/kiss_fft.h
+    thirdparty/kissfft/kiss_fftr.h
+)
+
+set(KISSFFT_SRC
+    thirdparty/kissfft/kiss_fft.c
+    thirdparty/kissfft/kiss_fftr.c
+) 
+
+add_library(kissfft ${KISSFFT_HEADERS} ${KISSFFT_SRC})
+target_include_directories(implot PUBLIC thirdparty/kissfft)
+set_property(TARGET kissfft PROPERTY C_STANDARD 11)
+target_compile_options(kissfft PRIVATE -Wall -Wextra -pedantic -Werror -Wno-newline-eof -O3)
+
+##---------------------------------------------------------------------
 ## audioplot
 ##---------------------------------------------------------------------
 
@@ -75,13 +94,15 @@ add_executable(audioplot source/audioplot.cpp)
 target_include_directories(audioplot PRIVATE thirdparty/pfd)
 target_include_directories(audioplot PRIVATE thirdparty/dr_libs)
 target_include_directories(audioplot PRIVATE thirdparty/stb)
+target_include_directories(audioplot PRIVATE thirdparty/kissfft)
 set(AUDIOPLOT_SRC
     source/audioplot_dr_mp3.cpp
     source/audioplot_dr_wav.cpp
+    source/audioplot_kiss_fft.cpp
     source/audioplot_pfd.cpp
     source/audioplot_stb_vorbis.cpp
 )
 target_sources(audioplot PRIVATE ${AUDIOPLOT_SRC})
 set_property(TARGET audioplot PROPERTY CXX_STANDARD 11)
 target_compile_options(audioplot PRIVATE -O3 -Wall -Wextra -Wformat)
-target_link_libraries(audioplot implot imgui)
+target_link_libraries(audioplot kissfft implot imgui)
