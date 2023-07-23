@@ -297,7 +297,7 @@ private:
 
         initializeTraceData();
 
-        m_spectrogram.initialize(m_channelData);
+        m_spectrogram.initialize(m_channelData, sampleRate);
     }
 
     TraceDetailLevel createDetailLevel(uint64_t windowSize, int32_t channel, uint64_t numValues) const
@@ -792,9 +792,9 @@ public:
                 ImPlot::SetupAxisLimits(ImAxis_Y1, -1.0, 1.0, ImGuiCond_Once);
             }
 
-            const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_None;
-            const ImPlotAxisFlags yAxisFlags = bSpreadEnabled ? (ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoTickLabels)
-                                                              : (ImPlotAxisFlags_Lock);
+            const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_NoHighlight;
+            const ImPlotAxisFlags yAxisFlags = bSpreadEnabled ? (ImPlotAxisFlags_NoHighlight | ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoTickLabels)
+                                                              : (ImPlotAxisFlags_NoHighlight | ImPlotAxisFlags_Lock);
 
             ImPlot::SetupAxes("Time (s)", NULL, xAxisFlags, yAxisFlags);
             ImPlot::SetupLegend(ImPlotLocation_North, ImPlotLegendFlags_Horizontal | ImPlotLegendFlags_Outside);
@@ -878,8 +878,8 @@ public:
                     const char* const ylabels[] = {ylabelstrs[0], ylabelstrs[1], ylabelstrs[2]};
                     ImPlot::SetupAxisTicks(ImAxis_Y1, yticks.data(), yticks.size(), ylabels);
 
-                    const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_None;
-                    const ImPlotAxisFlags yAxisFlags = ImPlotAxisFlags_Lock;
+                    const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_NoHighlight;
+                    const ImPlotAxisFlags yAxisFlags = ImPlotAxisFlags_NoHighlight | ImPlotAxisFlags_Lock;
                     ImPlot::SetupAxes("Time (s)", NULL, xAxisFlags, yAxisFlags);
 
                     const ImPlotRect plotLimits = ImPlot::GetPlotLimits();
@@ -944,9 +944,8 @@ public:
 
                 const ImPlotFlags plotFlags = ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect;
                 if (ImPlot::BeginPlot("", ImVec2(), plotFlags)) {
-
-                    const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_NoTickLabels;
-                    const ImPlotAxisFlags yAxisFlags = ImPlotAxisFlags_Lock;
+                    const ImPlotAxisFlags xAxisFlags = ImPlotAxisFlags_NoHighlight | ImPlotAxisFlags_NoTickLabels;
+                    const ImPlotAxisFlags yAxisFlags = ImPlotAxisFlags_NoHighlight | ImPlotAxisFlags_Lock;
                     char yAxisLabel[32];
                     snprintf(yAxisLabel, sizeof(yAxisLabel), "Channel %" PRIi32, trace + 1);
                     ImPlot::SetupAxes(NULL, yAxisLabel, xAxisFlags, yAxisFlags);

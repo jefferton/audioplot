@@ -8,15 +8,12 @@
 class Spectrogram::SpectrogramImpl
 {
 public:
-    SpectrogramImpl()
+    void initialize(const std::vector<std::vector<double>>& samples, float sampleRate)
     {
         for (int f = 0; f < (int)m_fft_frq.size(); ++f) {
-            m_fft_frq[f] = f * (float)FS / (float)N_FFT;
+            m_fft_frq[f] = f * sampleRate / (float)N_FFT;
         }
-    }
 
-    void initialize(const std::vector<std::vector<double>>& samples)
-    {
         m_channels.reserve(samples.size());    
         for (size_t ch = 0; ch < samples.size(); ch++) {
             m_channels.emplace_back(samples[ch]);
@@ -59,7 +56,6 @@ public:
     }
 
 private:
-    static constexpr int FS    = 44100;          // sampling rate
     static constexpr int N_FFT = 1024;           // FFT size
     static constexpr int N_FRQ = N_FFT / 2 + 1;  // FFT frequency count
     static constexpr double m_min_db = -25;      // minimum spectrogram dB
@@ -111,9 +107,9 @@ Spectrogram::~Spectrogram()
     m_pImpl = nullptr;
 }
 
-void Spectrogram::initialize(const std::vector<std::vector<double>>& samples)
+void Spectrogram::initialize(const std::vector<std::vector<double>>& samples, float sampleRate)
 {
-    m_pImpl->initialize(samples);
+    m_pImpl->initialize(samples, sampleRate);
 }
 
 const std::vector<float>& Spectrogram::data(size_t ch) const

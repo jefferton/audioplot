@@ -9,7 +9,7 @@ public:
     Spectrogram();
     ~Spectrogram();
 
-    void initialize(const std::vector<std::vector<double>>& samples);
+    void initialize(const std::vector<std::vector<double>>& samples, float sampleRate);
 
     const std::vector<float>& data(size_t ch) const;
     int n_frq() const;
