@@ -96,6 +96,7 @@ target_include_directories(audioplot PRIVATE thirdparty/dr_libs)
 target_include_directories(audioplot PRIVATE thirdparty/stb)
 target_include_directories(audioplot PRIVATE thirdparty/kissfft)
 set(AUDIOPLOT_SRC
+    source/audioplot_dr_flac.cpp
     source/audioplot_dr_mp3.cpp
     source/audioplot_dr_wav.cpp
     source/audioplot_kiss_fft.cpp

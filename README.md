@@ -17,6 +17,7 @@ Open a supported audio file in the audioplot gui:
     audioplot.exe song.mp3
     audioplot.exe song.wav
     audioplot.exe song.ogg
+    audioplot.exe song.flac
 
 ## Keyboard Controls
 

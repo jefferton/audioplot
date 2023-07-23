@@ -6,6 +6,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include "audioplot_dr_flac.h"
 #include "audioplot_dr_mp3.h"
 #include "audioplot_dr_wav.h"
 #include "audioplot_pfd.h"
@@ -212,6 +213,9 @@ private:
         else if (strstr(filename, ".ogg") != NULL) {
             loadFromOggFile(filename);
         }
+        else if (strstr(filename, ".flac") != NULL) {
+            loadFromFlacFile(filename);
+        }
         // std::cout << "Finished loading.\n";
     }
 
@@ -263,6 +267,23 @@ private:
             //           << sampleRate << '\n';
             processF32Samples(pSampleData, channelCount, sampleRate, frameCount);
             freeOggSampleData(pSampleData);
+        }
+    }
+
+    void loadFromFlacFile(const char* filename)
+    {
+        unsigned int channelCount;
+        unsigned int sampleRate;
+        uint64_t frameCount;  // frame = 1 sample per channel
+        float* pSampleData = openFlacFileAndReadPcmFramesF32(filename, &channelCount,
+                                                             &sampleRate, &frameCount);
+        if (pSampleData) {
+            // std::cout << "    Loading .flac file with "
+            //           << channelCount << " channels, "
+            //           << frameCount << " frames at sample rate "
+            //           << sampleRate << '\n';
+            processF32Samples(pSampleData, channelCount, sampleRate, frameCount);
+            freeFlacSampleData(pSampleData);
         }
     }
 
