@@ -16,6 +16,7 @@ UNAME_S := $(shell uname -s)
 EXE = audioplot
 
 SOURCES += source/audioplot.cpp
+SOURCES += source/audioplot_dr_flac.cpp
 SOURCES += source/audioplot_dr_mp3.cpp
 SOURCES += source/audioplot_dr_wav.cpp
 SOURCES += source/audioplot_pfd.cpp
